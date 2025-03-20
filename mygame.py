@@ -43,8 +43,9 @@ class Stellaris_2D:
 
     def _input(self):
         """handle and apply input"""
-        self.input_manager.process_input()
+        self.input_manager.process_input(self.camera)
         self.input_manager.handle_camera_panning(self.camera)
+        self.camera.update_zoom()
 
     def _update(self): 
         """update state of the game/simulation with new input and time that has passed"""
