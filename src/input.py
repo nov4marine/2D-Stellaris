@@ -62,7 +62,7 @@ class StellarisInputManager:
                     system = galaxy.get_solar_systems(star["name"])
                     src.globalVars.curr_solar_system = system
                     src.globalVars.view_mode = "solar_system"
-                    camera.reset()
+                    camera.reset(0, 0, 1)
             case 3:
                 #right click
                 pass

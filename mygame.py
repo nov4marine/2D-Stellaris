@@ -9,8 +9,8 @@ from src.gui import GUIManager
 from src.input import StellarisInputManager
 import src.globalVars
 
-screen_width = 1920
-screen_height = 1080
+screen_width = 800
+screen_height = 600
 
 class Stellaris_2D:
     """yes, game is a class, just roll with it for better organization?"""
