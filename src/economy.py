@@ -30,7 +30,7 @@ class Market:
             if good["demand"] > 0:
                 sdr = good["supply"] / good["demand"]
             else:
-                sdr = float('inf')
+                sdr = good["current price"]
 
             # Continuous price formula
             new_price = good["base_price"] * (sdr ** -k)
@@ -75,13 +75,12 @@ class Pop:
 
 
 class Building:
-    def __init__(self, name, building_type, input_goods, output_goods, efficiency=1.0, wealth=0):
+    def __init__(self, name, building_type, input_goods, output_goods, efficiency=1.0):
         self.name = name
         self.type = building_type
         self.input_goods = input_goods  # Example: {"minerals": 20}
         self.output_goods = output_goods  # Example: {"steel": 10}
         self.efficiency = efficiency
-        self.wealth = wealth
 
     def operate(self, market):
         # Buy inputs
