@@ -2,6 +2,8 @@ import pygame
 import pygame_gui
 import sys
 import src.camera
+import src.solar_system
+import src.globalVars
 
 class StellarisInputManager:
     """Handles input events and provides key states for real-time controls."""
@@ -16,8 +18,9 @@ class StellarisInputManager:
             pygame.K_EQUALS: False,  # Zoom in
             pygame.K_MINUS: False  # Zoom out
         }
+        
+    def process_input(self, galaxy, camera):
 
-    def process_input(self, camera):
         """Process input events and update key states."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -35,10 +38,10 @@ class StellarisInputManager:
 
             # Handle mouse 
             if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:  # Left click
-                    ("left_click", pygame.mouse.get_pos())
-                if event.button == 3:  # Right click
-                    ("right_click", pygame.mouse.get_pos())
+                mousePos = pygame.mouse.get_pos()
+                sys.stdout.write("click @ (" + str(mousePos[0]) + ", " + str(mousePos[1]) + ")\n")
+                self.handle_clicks(mousePos, event, galaxy, camera)
+                
             if event.type == pygame.MOUSEWHEEL:
                 zoom_adjustment = 1 + (event.y * 0.1)
                 camera.set_zoom(camera.target_zoom * zoom_adjustment)
@@ -60,20 +63,28 @@ class StellarisInputManager:
 
 
 
-    
+    def handle_clicks(self, mousePos, event, galaxy, camera):
+        match event.button:
+            case 1:
+                #left click
+                star = galaxy.get_star_from_pos(mousePos, camera)
+                if star is not None:
+                    system = galaxy.get_solar_systems(star["name"])
+                    src.globalVars.curr_solar_system = system
+                    src.globalVars.view_mode = "solar_system"
+                    camera.reset(0, 0, 1)
+            case 3:
+                #right click
+                pass
 
-    
+
+'''
         #if event.type == pygame.MOUSEBUTTONDOWN:
         #   mouse_x, mouse_y = pygame.mouse.get_pos()
          #   selected_star = galaxy.get_star_at_position(mouse_x, mouse_y, camera)  # Function to find clicked star
          #   if selected_star is not None:
          #       selected_solar_system = galaxy.solar_systems[selected_star["name"]]  # Fetch solar system
          #       view_mode = "solar_system"
-
-    
-
-    
-
     #cheat sheet: pygame.event.get() translates to pygame, fetch all user inputs since the last time 
     #that this function was called (which is usually the previous clock tick)
     #pygame event types: 
@@ -81,4 +92,6 @@ class StellarisInputManager:
         #mouse events: MOUSEBUTTONDOWN, MOUSEBUTTONUP, MOUSEMOTION
             #in this context event.pos gives the x,y coordinates of mouse when action occurred
         #window events: QUIT, VIDEORESIZE (which just means window was resized)
-        #custom user events can be created using pygame.USEREVENT
+        #custom user events can be created using pygame.USEREVENT'
+'''
+

@@ -1,5 +1,6 @@
 # src/galaxy.py
 
+import sys
 import pygame
 import random
 from src.solar_system import SolarSystem
@@ -28,7 +29,8 @@ class Galaxy:
                 "x": x,
                 "y": y,
                 "radius": radius,
-                "color": color
+                "color": color,
+                "hitbox": pygame.Rect
             })
 
         return stars
@@ -53,10 +55,34 @@ class Galaxy:
             screen_x, screen_y = camera.apply(star["x"], star["y"])
             #draw star as a circle
             pygame.draw.circle(screen, star["color"], (int(screen_x), int(screen_y)), int(star["radius"] * camera.zoom))
+            hitBox = pygame.rect.Rect()
+            hitBox.width = int(star["radius"])
+            hitBox.height = int(star["radius"])
+            hitBox.center = (int(screen_x), int(screen_y))
+            star["hitbox"] = hitBox
+
     
     def get_solar_systems(self, star_name):
         #access each one from the dictionary of stars
         return self.solar_systems.get(star_name)
+    
+    def get_star_from_pos(self, mousePos: tuple[int, int], camera):
+        for star in self.stars:
+            mouseWorldX = camera.offset_x + mousePos[0]
+            mouseWorldY = camera.offset_y + mousePos[1]
+
+            #sys.stdout.write("Mouse world pos @ (" + str(mouseWorldX) + ", " + str(mouseWorldY) + ")\n")
+
+            if star["hitbox"].collidepoint((int(mouseWorldX), int(mouseWorldY))):
+                sys.stdout.write("Star Found!\n")
+                camera.center_camera_on_star(camera, mouseWorldX, mouseWorldY)
+                #TODO Lerp camera so it transitions to centering, rather than instant change
+                return star
+            else:
+                pass
+                #sys.stdout.write("Hitbox center: " + str(star["hitbox"].center) + " Hitbox radius: " + str(star["hitbox"].size))
+                #sys.stdout.write(" No Star Found\n Screen coords: " + str(int(mousePos[0])) + " " + str(int(mousePos[1])) + "\n")
+        return None
 
     def update(self, time_delta): 
         #add logic for backgound events or anything that isn't pefectly static, such as sovereignty map

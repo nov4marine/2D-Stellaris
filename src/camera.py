@@ -25,11 +25,17 @@ class Camera:
     def set_zoom(self, zoom_factor):
         self.target_zoom = max(0.1, min(zoom_factor, 5.0))  # Clamp target_zoom within bounds
 
-    def center_camera_on_star(self):
+    def center_camera_on_star(self, camera, mouseX, mouseY):
         """center the camera on the star system you just clicked into"""
-        self.offset_x = -(self.screen_width // 2)  # Offset to center the star horizontally
-        self.offset_y = -(self.screen_height // 2)  # Offset to center the star vertically
-        self.zoom = 1.0  # Reset zoom to default
+        #find center of screen
+        centerX = self.screen_width / 2
+        centerY = self.screen_height / 2
+
+        #find distance between mouse pos and center then move screen so mouse is in center
+        self.move((mouseX - centerX), (mouseY - centerY))
+
+        camera.zoom = 1.0  # Reset zoom to default
+
 
     def reset(self, offset_x, offset_y, zoom):
         """Reset camera settings (used for switching views)."""
