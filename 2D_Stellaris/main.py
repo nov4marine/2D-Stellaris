@@ -1,3 +1,5 @@
+# This is also a copilot template for the main game loop. only partially functional and was rewritten as mygame.py
+
 import pygame
 import sys
 import pygame_gui.elements.ui_label
