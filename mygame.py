@@ -27,7 +27,7 @@ class Stellaris_2D:
         #instance classes for in-game objects here?
         self.galaxy = Galaxy()
         self.camera = Camera(screen_width, screen_height)
-        self.input_manager = StellarisInputManager()
+        self.input_manager = StellarisInputManager(self.galaxy)
         self.gui_manager = GUIManager
 
         self.view_mode = "galaxy"

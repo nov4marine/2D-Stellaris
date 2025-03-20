@@ -57,6 +57,11 @@ class Galaxy:
     def get_solar_systems(self, star_name):
         #access each one from the dictionary of stars
         return self.solar_systems.get(star_name)
+    
+    def get_star_from_pos(self, mousePos: tuple[int, int]):
+        for i in range(len(self.stars)):
+            if mousePos[0] == self.stars[i]["x"] & mousePos[1] == self.stars[i]["y"]:
+                return self.stars[i]
 
     def update(self, time_delta): 
         #add logic for backgound events or anything that isn't pefectly static, such as sovereignty map

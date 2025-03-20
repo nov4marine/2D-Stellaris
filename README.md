@@ -1,5 +1,7 @@
 **2D Stellaris**
+
 _Project Goals_
+
 I'll let horus fill this one out.
 
 Project Manager:
