@@ -13,11 +13,11 @@ class StellarisInputManager:
             pygame.K_s: False,  # Pan down
             pygame.K_a: False,  # Pan left
             pygame.K_d: False,  # Pan right
-            pygame.K_PLUS: False,  # Zoom in
+            pygame.K_EQUALS: False,  # Zoom in
             pygame.K_MINUS: False  # Zoom out
         }
 
-    def process_input(self):
+    def process_input(self, camera):
         """Process input events and update key states."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -33,12 +33,15 @@ class StellarisInputManager:
                 if event.key in self.key_states:
                     self.key_states[event.key] = False
 
-            # Handle mouse clicks
+            # Handle mouse 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
                     ("left_click", pygame.mouse.get_pos())
-                elif event.button == 3:  # Right click
+                if event.button == 3:  # Right click
                     ("right_click", pygame.mouse.get_pos())
+            if event.type == pygame.MOUSEWHEEL:
+                zoom_adjustment = 1 + (event.y * 0.1)
+                camera.set_zoom(camera.target_zoom * zoom_adjustment)
 
     # Handle real-time camer a movement
     def handle_camera_panning(self, camera):
@@ -50,6 +53,12 @@ class StellarisInputManager:
             camera.move(-50, 0)
         if self.key_states[pygame.K_d]:  # Pan right
             camera.move(50, 0)
+        if self.key_states[pygame.K_EQUALS]:
+            camera.set_zoom(camera.target_zoom * 1.05)
+        if self.key_states[pygame.K_MINUS]:
+            camera.set_zoom(camera.target_zoom * 0.95)
+
+
 
     
 
@@ -73,4 +82,3 @@ class StellarisInputManager:
             #in this context event.pos gives the x,y coordinates of mouse when action occurred
         #window events: QUIT, VIDEORESIZE (which just means window was resized)
         #custom user events can be created using pygame.USEREVENT
-        
