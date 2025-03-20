@@ -3,6 +3,7 @@ class Camera:
         self.offset_x = 0  # Camera's top-left corner x in world coordinates
         self.offset_y = 0  # Camera's top-left corner y in world coordinates
         self.zoom = 1.0  # Default zoom level
+        self.target_zoom = 1 #target zoom level for smooth zooming
         self.screen_width = screen_width
         self.screen_height = screen_height
 
@@ -17,10 +18,12 @@ class Camera:
         self.offset_x += dx
         self.offset_y += dy
 
-    def set_zoom(self, zoom_factor):
-        """Set the zoom level, ensuring it stays within a valid range."""
-        self.zoom = max(0.1, min(zoom_factor, 5.0))  # Clamp zoom between 0.1 and 5.0
+    def update_zoom(self):
+        # Smoothly transition the zoom level toward the target_zoom
+        self.zoom += (self.target_zoom - self.zoom) * 0.2  # Adjust 0.1 for smoother or faster transition
 
+    def set_zoom(self, zoom_factor):
+        self.target_zoom = max(0.1, min(zoom_factor, 5.0))  # Clamp target_zoom within bounds
 
     def center_camera_on_star(self, camera, mouseX, mouseY):
         """center the camera on the star system you just clicked into"""
@@ -32,6 +35,7 @@ class Camera:
         self.move((mouseX - centerX), (mouseY - centerY))
 
         camera.zoom = 1.0  # Reset zoom to default
+
 
     def reset(self, offset_x, offset_y, zoom):
         """Reset camera settings (used for switching views)."""

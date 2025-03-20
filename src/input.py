@@ -15,12 +15,12 @@ class StellarisInputManager:
             pygame.K_s: False,  # Pan down
             pygame.K_a: False,  # Pan left
             pygame.K_d: False,  # Pan right
-            pygame.K_PLUS: False,  # Zoom in
+            pygame.K_EQUALS: False,  # Zoom in
             pygame.K_MINUS: False  # Zoom out
         }
         
-
     def process_input(self, galaxy, camera):
+
         """Process input events and update key states."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -36,11 +36,15 @@ class StellarisInputManager:
                 if event.key in self.key_states:
                     self.key_states[event.key] = False
 
-            # Handle mouse clicks
+            # Handle mouse 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mousePos = pygame.mouse.get_pos()
                 sys.stdout.write("click @ (" + str(mousePos[0]) + ", " + str(mousePos[1]) + ")\n")
                 self.handle_clicks(mousePos, event, galaxy, camera)
+                
+            if event.type == pygame.MOUSEWHEEL:
+                zoom_adjustment = 1 + (event.y * 0.1)
+                camera.set_zoom(camera.target_zoom * zoom_adjustment)
 
     # Handle real-time camer a movement
     def handle_camera_panning(self, camera):
@@ -52,6 +56,12 @@ class StellarisInputManager:
             camera.move(-50, 0)
         if self.key_states[pygame.K_d]:  # Pan right
             camera.move(50, 0)
+        if self.key_states[pygame.K_EQUALS]:
+            camera.set_zoom(camera.target_zoom * 1.05)
+        if self.key_states[pygame.K_MINUS]:
+            camera.set_zoom(camera.target_zoom * 0.95)
+
+
 
     def handle_clicks(self, mousePos, event, galaxy, camera):
         match event.button:
@@ -84,3 +94,4 @@ class StellarisInputManager:
         #window events: QUIT, VIDEORESIZE (which just means window was resized)
         #custom user events can be created using pygame.USEREVENT'
 '''
+
