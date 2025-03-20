@@ -7,6 +7,7 @@ from src.galaxy import Galaxy
 from src.solar_system import SolarSystem
 from src.gui import GUIManager
 from src.input import StellarisInputManager
+import src.globalVars
 
 screen_width = 1920
 screen_height = 1080
@@ -30,7 +31,10 @@ class Stellaris_2D:
         self.input_manager = StellarisInputManager()
         self.gui_manager = GUIManager
 
-        self.view_mode = "galaxy"
+        src.globalVars.init()
+
+        src.globalVars.curr_solar_system = None
+        src.globalVars.view_mode = "galaxy"
 
 
     def run_game(self): 
@@ -53,10 +57,10 @@ class Stellaris_2D:
     def _render(self):
         """MY render to screen new stuf function method"""
         self.screen.fill((0, 0, 20))
-        if self.view_mode == "galaxy":
+        if src.globalVars.view_mode == "galaxy":
             self.galaxy.render_galaxy(self.screen, self.camera)
-        elif self.view_mode == "solar_system":
-            self.solar_system.render_solarsystem(self.screen, self.camera)
+        elif src.globalVars.view_mode == "solar_system":
+            src.globalVars.curr_solar_system.render_solarsystem(self.screen, self.camera)
         
         pygame.display.flip()
         

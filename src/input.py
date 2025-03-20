@@ -2,6 +2,8 @@ import pygame
 import pygame_gui
 import sys
 import src.camera
+import src.solar_system
+import src.globalVars
 
 class StellarisInputManager:
     """Handles input events and provides key states for real-time controls."""
@@ -40,11 +42,6 @@ class StellarisInputManager:
                 sys.stdout.write("click @ (" + str(mousePos[0]) + ", " + str(mousePos[1]) + ")\n")
                 self.handle_clicks(mousePos, event, galaxy, camera)
 
-                if event.button == 1:  # Left click
-                    ("left_click", pygame.mouse.get_pos())
-                elif event.button == 3:  # Right click
-                    ("right_click", pygame.mouse.get_pos())
-
     # Handle real-time camer a movement
     def handle_camera_panning(self, camera):
         if self.key_states[pygame.K_w]:  # Pan up
@@ -61,6 +58,11 @@ class StellarisInputManager:
             case 1:
                 #left click
                 star = galaxy.get_star_from_pos(mousePos, camera)
+                if star is not None:
+                    system = galaxy.get_solar_systems(star["name"])
+                    src.globalVars.curr_solar_system = system
+                    src.globalVars.view_mode = "solar_system"
+                    camera.reset()
             case 3:
                 #right click
                 pass

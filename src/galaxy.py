@@ -68,20 +68,20 @@ class Galaxy:
     
     def get_star_from_pos(self, mousePos: tuple[int, int], camera):
         for star in self.stars:
-            worldTopX = camera.offset_x
-            worldTopY = camera.offset_y
+            mouseWorldX = camera.offset_x + mousePos[0]
+            mouseWorldY = camera.offset_y + mousePos[1]
 
-            mouseWorldX = worldTopX + mousePos[0]
-            mouseWorldY = worldTopY + mousePos[1]
-
-            sys.stdout.write("Mouse world pos @ (" + str(mouseWorldX) + ", " + str(mouseWorldY) + ")\n")
+            #sys.stdout.write("Mouse world pos @ (" + str(mouseWorldX) + ", " + str(mouseWorldY) + ")\n")
 
             if star["hitbox"].collidepoint((int(mouseWorldX), int(mouseWorldY))):
                 sys.stdout.write("Star Found!\n")
+                camera.center_camera_on_star(camera, mouseWorldX, mouseWorldY)
+                #TODO Lerp camera so it transitions to centering, rather than instant change
                 return star
             else:
-                sys.stdout.write("Hitbox center: " + str(star["hitbox"].center) + " Hitbox radius: " + str(star["hitbox"].size))
-                sys.stdout.write(" No Star Found\n Screen coords: " + str(int(mousePos[0])) + " " + str(int(mousePos[1])) + "\n")
+                pass
+                #sys.stdout.write("Hitbox center: " + str(star["hitbox"].center) + " Hitbox radius: " + str(star["hitbox"].size))
+                #sys.stdout.write(" No Star Found\n Screen coords: " + str(int(mousePos[0])) + " " + str(int(mousePos[1])) + "\n")
         return None
 
     def update(self, time_delta): 
