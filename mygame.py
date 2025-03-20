@@ -27,7 +27,7 @@ class Stellaris_2D:
         #instance classes for in-game objects here?
         self.galaxy = Galaxy()
         self.camera = Camera(screen_width, screen_height)
-        self.input_manager = StellarisInputManager(self.galaxy)
+        self.input_manager = StellarisInputManager()
         self.gui_manager = GUIManager
 
         self.view_mode = "galaxy"
@@ -43,7 +43,7 @@ class Stellaris_2D:
 
     def _input(self):
         """handle and apply input"""
-        self.input_manager.process_input()
+        self.input_manager.process_input(self.galaxy, self.camera)
         self.input_manager.handle_camera_panning(self.camera)
 
     def _update(self): 

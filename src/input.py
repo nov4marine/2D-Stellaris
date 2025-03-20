@@ -6,7 +6,7 @@ import src.camera
 class StellarisInputManager:
     """Handles input events and provides key states for real-time controls."""
 
-    def __init__(self, galaxy):
+    def __init__(self):
         # Tracks the state of keys (pressed or not)
         self.key_states = {
             pygame.K_w: False,  # Pan up
@@ -16,9 +16,9 @@ class StellarisInputManager:
             pygame.K_PLUS: False,  # Zoom in
             pygame.K_MINUS: False  # Zoom out
         }
-        self.galaxy = galaxy
+        
 
-    def process_input(self):
+    def process_input(self, galaxy, camera):
         """Process input events and update key states."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -38,7 +38,7 @@ class StellarisInputManager:
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mousePos = pygame.mouse.get_pos()
                 sys.stdout.write("click @ (" + str(mousePos[0]) + ", " + str(mousePos[1]) + ")\n")
-                self.handle_clicks(mousePos, event, self.galaxy)
+                self.handle_clicks(mousePos, event, galaxy, camera)
 
                 if event.button == 1:  # Left click
                     ("left_click", pygame.mouse.get_pos())
@@ -56,13 +56,11 @@ class StellarisInputManager:
         if self.key_states[pygame.K_d]:  # Pan right
             camera.move(50, 0)
 
-    def handle_clicks(self, mousePos, event, galaxy):
+    def handle_clicks(self, mousePos, event, galaxy, camera):
         match event.button:
             case 1:
                 #left click
-                star = galaxy.get_star_from_pos(mousePos)
-
-                sys.stdout.write(star)
+                star = galaxy.get_star_from_pos(mousePos, camera)
             case 3:
                 #right click
                 pass
