@@ -1,11 +1,12 @@
 class Camera:
-    def __init__(self, screen_width, screen_height):
+    def __init__(self, screen_width, screen_height, screen):
         self.offset_x = 0  # Camera's top-left corner x in world coordinates
         self.offset_y = 0  # Camera's top-left corner y in world coordinates
         self.zoom = 1.0  # Default zoom level
         self.target_zoom = 1 #target zoom level for smooth zooming
         self.screen_width = screen_width
         self.screen_height = screen_height
+        self.screen = screen
 
     def apply(self, world_x, world_y):
         """Convert world coordinates to screen coordinates."""
@@ -17,6 +18,7 @@ class Camera:
         """Move the camera by dx and dy in world coordinates."""
         self.offset_x += dx
         self.offset_y += dy
+        #Move the screen surface as well
 
     def update_zoom(self):
         # Smoothly transition the zoom level toward the target_zoom
