@@ -1,6 +1,6 @@
-**2D Stellaris**
+# 2D Stellaris
 
-_Project Goals_
+## Project Goals
 
 I'll let horus fill this one out.
 

@@ -23,14 +23,14 @@ class Stellaris_2D:
         self.clock = pygame.time.Clock()
         self.screen = pygame.display.set_mode((screen_width, screen_height))
         pygame.display.set_caption("2D Stellaris")
-        self.manager = pygame_gui.UIManager((screen_width, screen_height), './2D-Stellaris/src/theme.json')
+        self.manager = pygame_gui.UIManager((screen_width, screen_height), './src/theme.json')
 
         #instance classes for in-game objects here?
         self.galaxy = Galaxy()
         self.camera = Camera(screen_width, screen_height, self.screen)
         self.input_manager = StellarisInputManager()
         self.gui_manager = GUIManager(screen_width=screen_width, screen_height=screen_height, manager=self.manager)
-        self.manager.set_visual_debug_mode(True)
+        #self.manager.set_visual_debug_mode(True)
         
 
         src.globalVars.init()
@@ -39,8 +39,8 @@ class Stellaris_2D:
         src.globalVars.view_mode = "galaxy"
         src.globalVars.view_switched = False
 
-        self.background = pygame.Surface((screen_width, screen_height))
-        self.background.fill((0, 0 ,20))
+        #self.background = pygame.Surface((screen_width, screen_height))
+        #self.background.fill((0, 0 ,20))
 
 
     def run_game(self): 
@@ -49,7 +49,7 @@ class Stellaris_2D:
             self.time_delta = self.clock.tick(60) / 1000
             self._input()
             self._update()
-            self.screen.blit(self.background, (0, 0))
+            #self.screen.blit(self.background, (0, 0))
 
             self._render()
 
@@ -69,9 +69,9 @@ class Stellaris_2D:
     def _render(self):
         """MY render to screen new stuf function method"""
         if src.globalVars.view_mode == "galaxy":
-            self.galaxy.render_galaxy(self.screen, self.camera)
             if src.globalVars.view_switched == True:
                 self.gui_manager.initialize_galaxy_gui()
+            self.galaxy.render_galaxy(self.screen, self.camera)
         elif src.globalVars.view_mode == "solar_system":
             if src.globalVars.view_switched == True:
                 self.gui_manager.initialize_solar_system_gui(src.globalVars.curr_solar_system.star_name)
