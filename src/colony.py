@@ -21,6 +21,7 @@ class Colony:
         self.deficits = 0
         self.output = 0
         self.unemployed = 0
+        self.local_bank = 0
 
         self.colony_setup = self._colony_setup()
 
@@ -53,10 +54,11 @@ class Colony:
 
 
 class Building:
-    def __init__(self, name, colony, building_type, land_size, input_goods, output_goods, efficiency=1.0, levels=1):
+    def __init__(self, name, colony, building_type, construction_cost, land_size, input_goods, output_goods, efficiency=1.0, levels=0):
         self.name = name
         self.colony = colony
         self.type = building_type
+        self.construction_cost = construction_cost
         self.land_size = land_size
         self.input_goods = input_goods  # Example: {"minerals": 20}
         self.output_goods = output_goods  # Example: {"steel": 10}
@@ -65,24 +67,87 @@ class Building:
         self.levels = levels
         self.revenue = 0
         self.expenses = 0
+        self.profit = 0
         self.cash_reserves = 0
+        self.dividends = 0
+        self.ownership = {"total": 0, "private": 0, "government": 0, "workers": 0}
 
     def operate(self, market):
         #reset for the tick
         self.expenses = 0
         self.revenue = 0
+        self.profit = 0
+        self.dividends = 0
 
-        # Buy inputs
+        # Buy inputs and add cost of all inputs to expenses
         for good, quantity in self.input_goods.items():
             total_inputs = quantity * self.efficiency * self.levels
             self.expenses += market.buy_good(good, total_inputs)
 
-        # Sell outputs
+        # Sell outputs and add cost of all outputs to revenue
         for good, quantity in self.output_goods.items():
             total_outputs = quantity * self.efficiency * self.levels
             self.revenue += market.sell_good(good, total_outputs)
 
+    def calculate_profit(self):
+        """calculate profit from revenue and expenses. dip into or subtract from cash reserves as needed"""
+        self.profit = self.revenue - self.expenses
+        if self.profit <= 0:
+            self.cash_reserves += self.profit #if profit is negative, subtract from cash reserves
+        if self.profit > 0:
+            if self.cash_reserves < 1000:
+                self.cash_reserves += (self.profit / 2)
+                self.dividends += (self.profit / 2)
+            if self.cash_reserves >= 1000:
+                self.dividends += self.profit
+                
+    def pay_dividends(self):
+            #determine relative share of dividends for each owner using "levels owned/total levels"
+            investor_share = self.dividends * (self.ownership["private"] / self.ownership["total"])
+            government_share = self.dividends * (self.ownership["government"] / self.ownership["total"])
+            worker_share = self.dividends * (self.ownership["workers"] / self.ownership["total"])
+
+            #publish the above info for higher classes to fetch
+            return {"investors": investor_share, "government": government_share, "workers":worker_share}
+            
     def calculate_payouts(self):
+        """
+        Pay workers based on wages, using cash reserves if revenue is insufficient.
+        """
+        payouts = {}
+        total_wages = 0
+
+        # Step 1: Calculate total wages owed.
+        for job in self.jobs:
+            for pop in job.assigned_pops:
+                total_wages += job.wage * pop.size
+
+        # Step 2: Pay wages from revenue and reserves.
+        if self.revenue + self.cash_reserves >= total_wages:
+            # Full payment scenario: Pay each worker their full wage.
+            for job in self.jobs:
+                for pop in job.assigned_pops:
+                    payout = job.wage * pop.size
+                    payouts[pop.profession] = payouts.get(pop.profession, 0) + payout
+                    pop.income += payout  # Update pop's income attribute directly
+            # Update cash reserves after payment.
+            self.expenses +=  total_wages
+        else:
+            # Insufficient funds scenario: Pay proportionally to available funds.
+            available_funds = self.revenue + self.cash_reserves
+            proportion = available_funds / total_wages  # Fraction of wages that can be paid.
+            for job in self.jobs:
+                for pop in job.assigned_pops:
+                    payout = (job.wage * pop.size) * proportion
+                    payouts[pop.name] = payouts.get(pop.name, 0) + payout
+                    pop.income += payout  # Update pop's income attribute directly
+            # Deplete cash reserves entirely.
+            self.cash_reserves = 0
+
+        # Return the payouts dictionary (optional tracking or logging).
+        return payouts
+
+    def share_profit(self):
         """Distribute revenue proportionally based on the wage and pop size working in each job."""
         payouts = {}
         # For a simple demonstration, we weight each pop's share by (job wage * pop size).
@@ -108,6 +173,7 @@ class Job:
         self.building = building
         self.max_positions = max_positions #total number of employees for this job
         self.assigned_pops = [] #list of pops employed in this job 
+        self.qualifications = {}
 
     def current_employment(self):
         """returns the current number of individuals assigned to this job"""
@@ -126,18 +192,17 @@ class Job:
         consolidated = {}
         for pop in self.assigned_pops:
             # Use (name, frozenset of trait items) as the key
-            key = (pop.name, frozenset(pop.traits.items()))
+            key = (pop.profession, pop.pop_type)
             if key in consolidated:
                 consolidated[key].size += pop.size
             else:
                 # Create a new Pop instance as the basis of consolidation.
-                consolidated[key] = Pop(pop.name, pop.size, current_job=self, traits=pop.traits)
+                consolidated[key] = Pop(pop.colony, pop.pop_type, pop.size, profession=self, needs=pop.needs, income=pop.income, current_job=self)
         # Replace the assigned pops list with the consolidated pops.
         self.assigned_pops = list(consolidated.values())
     
 class Pop:
-    def __init__(self, name, colony, pop_type, size, profession, needs, income, current_job=None):
-        self.name = name
+    def __init__(self, colony, pop_type, size, profession, needs, income, current_job=None):
         self.colony = colony
         self.pop_type = pop_type
         self.size = size
@@ -146,10 +211,12 @@ class Pop:
         self.happiness = 100
         self.income = income
         self.current_job = current_job #reference to the job this pop is assigned to
+        self.education = 1
+        self.wage = self.income / self.size
 
     def consume_goods(self, market):
         for good, quantity in self.needs.items():
-            market.buy_good(self, good, quantity)
+            market.buy_good(self, good, (quantity * self.size))
 
     def split(self, amount):
         """
