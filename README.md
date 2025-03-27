@@ -2,7 +2,7 @@
 
 _Project Goals_
 
-I'll let horus fill this one out.
+Stellaris, but with the political economy of Victoria 3
 
 Project Manager:
 @miad2401
