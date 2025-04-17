@@ -1,7 +1,6 @@
 import pygame
 import pygame_gui
 import sys
-import src.camera
 
 class StellarisInputManager:
     """Handles input events and provides key states for real-time controls."""
@@ -17,11 +16,13 @@ class StellarisInputManager:
             pygame.K_MINUS: False  # Zoom out
         }
 
-    def process_input(self, camera):
+    def process_input(self, camera, galaxy, manager, game_state):
         """Process input events and update key states."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit()  # Exit the program when quitting
+
+            manager.process_events(event)  # Process GUI events
 
             # Handle key presses
             if event.type == pygame.KEYDOWN:
@@ -33,15 +34,35 @@ class StellarisInputManager:
                 if event.key in self.key_states:
                     self.key_states[event.key] = False
 
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    # Return to galaxy view
+                    game_state["view_mode"] = "galaxy"
+                    game_state["selected_star"] = None
+                    game_state["current_solar_system"] = None
+
+
             # Handle mouse 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
-                    ("left_click", pygame.mouse.get_pos())
+
+                    for star in galaxy.stars:
+                        # Check if the mouse position is within the star's hitbox
+                        if star["rect"].collidepoint(event.pos):
+                            # If it is, set the selected star in the game state
+                            game_state["view_mode"] = "solar_system"
+                            game_state["selected_star"] = star
+                            game_state["current_solar_system"] = galaxy.solar_systems.get(star["name"]) # Fetch solar system
+                            camera.reset(0, 0, 1)  # Reset camera to default position and zoom 
+                            camera.center_camera_on_star()  # Center camera on the selected star
+
+
                 if event.button == 3:  # Right click
                     ("right_click", pygame.mouse.get_pos())
             if event.type == pygame.MOUSEWHEEL:
-                zoom_adjustment = 1 + (event.y * 0.1)
-                camera.set_zoom(camera.target_zoom * zoom_adjustment)
+                new_zoom = camera.target_zoom + (event.y * 0.1)
+                cursor_pos = pygame.mouse.get_pos()
+                camera.zoom_to(new_zoom, cursor_pos)  # Zoom towards the mouse position
 
     # Handle real-time camer a movement
     def handle_camera_panning(self, camera):
@@ -74,7 +95,8 @@ class StellarisInputManager:
 
     
 
-    #cheat sheet: pygame.event.get() translates to pygame, fetch all user inputs since the last time 
+    #cheat sheet:
+    # pygame.event.get() translates to: pygame, fetch all user inputs since the last time 
     #that this function was called (which is usually the previous clock tick)
     #pygame event types: 
         #Keyboard events: KEYDOWN, KEYUP
@@ -82,3 +104,8 @@ class StellarisInputManager:
             #in this context event.pos gives the x,y coordinates of mouse when action occurred
         #window events: QUIT, VIDEORESIZE (which just means window was resized)
         #custom user events can be created using pygame.USEREVENT
+
+    # "fetch" is a bit of a misnomer, as it doesn't actually fetch anything, but rather returns a list of events that have occurred since the last time this function was called.
+    # pygame.event.get() is a blocking call, meaning it will wait until an event occurs before returning.
+    # .get(thing) is a method that retrieves the value associated with the key "thing" in a dictionary. In this case, it retrieves the value associated with the key "thing" in the dictionary returned by pygame.event.get().
+    # .get(thing) basically is you pointing at or having pygame target that thing within whatever context.

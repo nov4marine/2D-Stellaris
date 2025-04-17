@@ -4,6 +4,8 @@ class Camera:
         self.offset_y = 0  # Camera's top-left corner y in world coordinates
         self.zoom = 1.0  # Default zoom level
         self.target_zoom = 1 #target zoom level for smooth zooming
+        self.target_offset_x = self.offset_x # Target offset x for smooth panning
+        self.target_offset_y = self.offset_y # Target offset y for smooth panning
         self.screen_width = screen_width
         self.screen_height = screen_height
 
@@ -15,12 +17,38 @@ class Camera:
 
     def move(self, dx, dy):
         """Move the camera by dx and dy in world coordinates."""
-        self.offset_x += dx
-        self.offset_y += dy
+        self.target_offset_x += dx
+        self.target_offset_y += dy
+
+    def zoom_to(self, new_zoom, pivot):
+        """
+        Zooms towards the given pivot point (screen coordinates), ensuring that
+        the world coordinate under the pivot remains the same.
+        
+        :param new_zoom: New target zoom level.
+        :param pivot: (x, y) tuple for the pivot in screen coordinates.
+        """
+        pivot_x, pivot_y = pivot
+
+        # Determine the world coordinates currently under the pivot:
+        world_x = self.offset_x + pivot_x / self.zoom
+        world_y = self.offset_y + pivot_y / self.zoom
+        
+        # Set the new target zoom:
+        self.target_zoom = max(0.1, min(new_zoom, 5.0))  # Clamp to [0.1, 5.0]
+        
+        # Calculate the new target offsets so that the same world coordinate stays at pivot:
+        self.target_offset_x = world_x - pivot_x / self.target_zoom
+        self.target_offset_y = world_y - pivot_y / self.target_zoom
 
     def update_zoom(self):
-        # Smoothly transition the zoom level toward the target_zoom
-        self.zoom += (self.target_zoom - self.zoom) * 0.2  # Adjust 0.1 for smoother or faster transition
+        # Smooth interpolation speed (adjust factor as needed)
+        smooth_factor = 0.2
+        # Smoothly update zoom:
+        self.zoom += (self.target_zoom - self.zoom) * smooth_factor
+        # Smoothly update camera offsets:
+        self.offset_x += (self.target_offset_x - self.offset_x) * smooth_factor
+        self.offset_y += (self.target_offset_y - self.offset_y) * smooth_factor
 
     def set_zoom(self, zoom_factor):
         self.target_zoom = max(0.1, min(zoom_factor, 5.0))  # Clamp target_zoom within bounds
@@ -35,5 +63,5 @@ class Camera:
         """Reset camera settings (used for switching views)."""
         self.offset_x = offset_x
         self.offset_y = offset_y
-        self.zoom = zoom
+        self.target_zoom = zoom
         

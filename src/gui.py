@@ -12,6 +12,12 @@ class GUIManager:
         self.tooltip = None
 
     def initialize_solar_system_gui(self, solar_system_name):
+        """
+        every entry here is a gui element. Every entry corresponds to a button, label, tooltip, etc.
+        Every entry is intended to be a component of the UI that is exclusively for the solar system view.
+        The solar system name is passed in to create a label for the solar system name.
+        """
+
         # Create the solar system label
         self.solar_system_label = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect((10, self.screen_height - 50), (300, 40)),
@@ -35,7 +41,7 @@ class GUIManager:
         )
 
     def clear_gui(self):
-        # Hide or reset GUI elements
+        # Hide / reset GUI elements that are exclusive to specific views
         if self.solar_system_label:
             self.solar_system_label.kill() #kills solar system label
             self.solar_system_label = None
