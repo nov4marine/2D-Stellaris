@@ -1,6 +1,8 @@
 import pygame
 import pygame_gui
 import sys
+#import src.action_manager
+
 
 class StellarisInputManager:
     """Handles input events and provides key states for real-time controls."""
@@ -15,6 +17,17 @@ class StellarisInputManager:
             pygame.K_EQUALS: False,  # Zoom in
             pygame.K_MINUS: False  # Zoom out
         }
+
+    def main_menu(self, game_state):
+        """Handles input events in the main menu."""
+        
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_s:
+                    game_state["current_state"] = "gameplay"
+                elif event.key == pygame.K_e:
+                    pygame.quit()
+                    sys.exit()
 
     def process_input(self, camera, galaxy, manager, game_state):
         """Process input events and update key states."""
@@ -40,7 +53,6 @@ class StellarisInputManager:
                     game_state["view_mode"] = "galaxy"
                     game_state["selected_star"] = None
                     game_state["current_solar_system"] = None
-
 
             # Handle mouse 
             if event.type == pygame.MOUSEBUTTONDOWN:
