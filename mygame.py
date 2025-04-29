@@ -8,6 +8,8 @@ from src.galaxy import Galaxy
 from src.solar_system import SolarSystem
 from src.input import StellarisInputManager
 
+from src.main_menu import main_menu, NewGameUI
+
 from src.nation import Nation
 
 screen_width = 1920
@@ -42,7 +44,8 @@ class Stellaris_2D:
         self.galaxy_background = pygame.transform.scale(self.galaxy_background, (screen_width, screen_height))
 
         self.game_state = {
-            "current_state": "main_menu",  # or "gameplay"
+            "current_state": "main_menu",  # can be main_menu, gameplay, new_game, options, 
+            "new_game_initialized": False,  
 
             "view_mode": "galaxy",  # or "solar_system"
             "selected_star": None,  # The star selected in the galaxy view
@@ -54,65 +57,34 @@ class Stellaris_2D:
         while True:
             self.time_delta = self.clock.tick(60) / 1000
             fps = self.clock.get_fps()
-            print(f"FPS: {fps}")
+            #print(f"FPS: {fps}")
 
             if self.game_state["current_state"] == "main_menu":
-                self.main_menu()
+                main_menu(self.screen, self.game_state, self.input_manager, self.manager)  # Display the main menu
+                self.manager.update(self.time_delta)  # Update the GUI manager
+                self.manager.draw_ui(self.screen)  # Draw the GUI elements
+                
+            elif self.game_state["current_state"] == "new_game":
+                if self.game_state["new_game_initialized"] == False:
+                    self.game_state["new_game_initialized"] = True
+                    new_game_elements = NewGameUI(self.screen, self.game_state, self.manager)  # Display the new game menu
+                self.input_manager.new_game_input(self.game_state, self.manager, new_game_elements)  # Handle input for the new game menu
+                self.manager.update(self.time_delta)  # Update the GUI manager
+                self.manager.draw_ui(self.screen)  # Draw the GUI elements
+
+
             elif self.game_state["current_state"] == "gameplay":
+                self.manager.clear_and_reset()  # Clear the GUI manager for gameplay
                 self._input()
                 self._update()
                 self._render()
                 self._render_gui()
+                #draw the gui elements
+                self.manager.update(self.time_delta)  # Update the GUI manager
+                self.manager.draw_ui(self.screen)  # Draw the GUI elements
+            pygame.display.flip()  # Update the display
 
-    def main_menu(self):
-        # Load a background image (make sure you have the file in your directory)
-        background = pygame.image.load("C:/Users/nov4m/Documents/Python/Stellaris Github/2D-Stellaris/assets/menu_background.jpg")
-        self.screen.blit(background, (0, 0))  # Draw the background image
-
-        # Draw a semi-transparent overlay
-        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 128))  # Black with 50% opacity
-        self.screen.blit(overlay, (0, 0))
-        
-        # Title text
-        menu_font = pygame.font.Font(None, 50)  # Use a cool font if available
-        title = menu_font.render("Stellaris 2D", True, (255, 255, 255))
-        self.screen.blit(title, (self.screen.get_width() // 2 - title.get_width() // 2, 100))
-
-        # Animated buttons (hover effects)
-        mouse_pos = pygame.mouse.get_pos()
-        button_font = pygame.font.Font(None, 36)
-
-        # Start Button
-        start_rect = pygame.Rect(300, 250, 200, 50)
-        start_color = (255, 255, 255) if start_rect.collidepoint(mouse_pos) else (200, 200, 200)
-        pygame.draw.rect(self.screen, start_color, start_rect, border_radius=10)
-        start_text = button_font.render("Start New Game", True, (0, 0, 0))
-        self.screen.blit(start_text, (start_rect.x + 50, start_rect.y + 10))
-
-        # Exit Button
-        exit_rect = pygame.Rect(300, 350, 200, 50)
-        exit_color = (255, 255, 255) if exit_rect.collidepoint(mouse_pos) else (200, 200, 200)
-        pygame.draw.rect(self.screen, exit_color, exit_rect, border_radius=10)
-        exit_text = button_font.render("Exit", True, (0, 0, 0))
-        self.screen.blit(exit_text, (exit_rect.x + 75, exit_rect.y + 10))
-
-        # Update display
-        pygame.display.flip()
-
-        # Handle input events
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.game_state["current_state"] = "EXIT"
-                sys.exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if start_rect.collidepoint(mouse_pos):
-                    self.game_state["current_state"] = "gameplay"
-                elif exit_rect.collidepoint(mouse_pos):
-                    self.game_state["current_state"] = "EXIT"
-                    sys.exit()
-            self.input_manager.main_menu(self.game_state)  # Process input events in the main menu
-
+            
     def _input(self):
         """handle and apply input"""
         self.input_manager.process_input(self.camera, self.galaxy, self.manager, self.game_state)
@@ -126,7 +98,7 @@ class Stellaris_2D:
 
     def _render(self):
         """MY render to screen new stuf function method"""
-        self.screen.fill((0, 0, 20))
+        self.screen.fill((0, 0, 50))
         if self.game_state["view_mode"] == "galaxy":
             self.screen.blit(self.galaxy_background, (0, 0))  # Draw the galaxy background
             self.galaxy.render_galaxy(self.screen, self.camera)
@@ -138,8 +110,7 @@ class Stellaris_2D:
 
     def _render_gui(self):
         """render GUI elements"""
-        if self.gui_manager is None:
-            self.gui_manager.initialize_core_hud(self.nation)  # Initialize core HUD elements
+
 
         # Update the core HUD elements with game state information
         if self.game_state["view_mode"] == "galaxy":
@@ -150,14 +121,9 @@ class Stellaris_2D:
                 self.solar_system_gui.draw()  # Draw the solar system UI
             else:
                 # Update the solar system UI with the current solar system information
-                self.solar_system_ui.star = self.game_state["current_solar_system"]
-                self.solar_system_ui.draw()  # Draw the solar system UI
+                self.solar_system_gui.star = self.game_state["current_solar_system"]
+                self.solar_system_gui.draw()  # Draw the solar system UI
 
-        #draw the gui elements
-        self.manager.draw_ui(self.screen)
-        
-        # Draw the whole game screen
-        pygame.display.flip()
         
 
 Stellaris_2D().run_game()

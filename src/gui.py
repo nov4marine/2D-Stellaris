@@ -37,6 +37,8 @@ class GUIManager:
         self.top_bar = TopBar(0, 0, 1920, 50, self.manager, nation)
         self.collapsed_panel = CollapsiblePanel(0, 50, 50, 300, 300, self.manager)
 
+    
+
 
     def draw(self):
         """Draw the GUI elements on the screen."""
@@ -191,7 +193,6 @@ class SolarSystemGUI:
             x=10, y=10, width=140, height=40,
             text="Return to Galaxy",
             manager=self.manager,
-            action=self.return_to_galaxy_view
         )
 
     def update(self, events):

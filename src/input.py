@@ -18,19 +18,43 @@ class StellarisInputManager:
             pygame.K_MINUS: False  # Zoom out
         }
 
-    def main_menu(self, game_state):
-        """Handles input events in the main menu."""
-        
+    def new_game_input(self, game_state, gui_manager, new_game_ui):
+        """Processes input events specifically for the New Game UI."""
+
         for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_s:
+            gui_manager.process_events(event)  # Ensure UI handles input
+
+            if event.type == pygame.QUIT:
+                sys.exit()  # Close the game properly
+
+            # ✅ Handle Button Clicks
+            if event.type == pygame_gui.UI_BUTTON_PRESSED:
+                if event.ui_element == new_game_ui.start_game:
                     game_state["current_state"] = "gameplay"
-                elif event.key == pygame.K_e:
-                    pygame.quit()
-                    sys.exit()
+                    game_state["new_game_initialized"] = False
+                    print("Starting new game...")
+
+                elif event.ui_element == new_game_ui.return_to_menu:
+                    game_state["current_state"] = "main_menu"
+                    game_state["new_game_initialized"] = False
+                    print("Returning to main menu...")
+
+            # ✅ Handle Text Entry
+            elif event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED and event.ui_element == new_game_ui.nation_name_entry:
+                print(f"Nation Name Entered: {new_game_ui.nation_name_entry.get_text()}")
+
+            # ✅ Handle Dropdown Selection
+            elif event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED and event.ui_element == new_game_ui.government_dropdown:
+                print(f"Government Selected: {new_game_ui.government_dropdown.selected_option}")
+
+            # ✅ Handle Selection List Changes
+            elif event.type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION and event.ui_element == new_game_ui.ethos_list:
+                print(f"Ethos Selected: {new_game_ui.ethos_list.get_single_selection()}")
+
+
 
     def process_input(self, camera, galaxy, manager, game_state):
-        """Process input events and update key states."""
+        """Process input events and update key states while in main gameplay loop."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit()  # Exit the program when quitting
