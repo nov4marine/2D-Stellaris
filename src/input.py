@@ -1,124 +1,110 @@
 import pygame
 import pygame_gui
 import sys
-#import src.action_manager
+
+# Only import what you need, and avoid circular imports!
+
+###############################################################################
+# Menu Input Manager
+###############################################################################
+
+class MenuInputManager:
+    """Handles input events for menus and setup screens."""
+
+    def process_input(self, game_state, gui_manager, menu_ui):
+        for event in pygame.event.get():
+            #print(event)
+            gui_manager.process_events(event)
+            menu_ui.handle_events(event)
 
 
-class StellarisInputManager:
-    """Handles input events and provides key states for real-time controls."""
+###############################################################################
+# Gameplay Input Manager
+###############################################################################
 
-    def __init__(self):
-        # Tracks the state of keys (pressed or not)
+class GameplayInputManager:
+    """Handles input events for in-game controls."""
+
+    def __init__(self, nation):
         self.key_states = {
-            pygame.K_w: False,  # Pan up
-            pygame.K_s: False,  # Pan down
-            pygame.K_a: False,  # Pan left
-            pygame.K_d: False,  # Pan right
-            pygame.K_EQUALS: False,  # Zoom in
-            pygame.K_MINUS: False  # Zoom out
+            pygame.K_w: False,
+            pygame.K_s: False,
+            pygame.K_a: False,
+            pygame.K_d: False,
+            pygame.K_EQUALS: False,
+            pygame.K_MINUS: False
         }
+        self.nation = nation
 
-    def new_game_input(self, game_state, gui_manager, new_game_ui):
-        """Processes input events specifically for the New Game UI."""
-
-        for event in pygame.event.get():
-            gui_manager.process_events(event)  # Ensure UI handles input
-
-            if event.type == pygame.QUIT:
-                sys.exit()  # Close the game properly
-
-            # ✅ Handle Button Clicks
-            if event.type == pygame_gui.UI_BUTTON_PRESSED:
-                if event.ui_element == new_game_ui.start_game:
-                    game_state["current_state"] = "gameplay"
-                    game_state["new_game_initialized"] = False
-                    print("Starting new game...")
-
-                elif event.ui_element == new_game_ui.return_to_menu:
-                    game_state["current_state"] = "main_menu"
-                    game_state["new_game_initialized"] = False
-                    print("Returning to main menu...")
-
-            # ✅ Handle Text Entry
-            elif event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED and event.ui_element == new_game_ui.nation_name_entry:
-                print(f"Nation Name Entered: {new_game_ui.nation_name_entry.get_text()}")
-
-            # ✅ Handle Dropdown Selection
-            elif event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED and event.ui_element == new_game_ui.government_dropdown:
-                print(f"Government Selected: {new_game_ui.government_dropdown.selected_option}")
-
-            # ✅ Handle Selection List Changes
-            elif event.type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION and event.ui_element == new_game_ui.ethos_list:
-                print(f"Ethos Selected: {new_game_ui.ethos_list.get_single_selection()}")
-
-
-
-    def process_input(self, camera, galaxy, manager, game_state):
-        """Process input events and update key states while in main gameplay loop."""
+    def process_input(self, camera, galaxy, gui_manager, game_state):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                sys.exit()  # Exit the program when quitting
+                sys.exit()
 
-            manager.process_events(event)  # Process GUI events
+            gui_manager.process_events(event)
 
-            # Handle key presses
+            # Key presses/releases
             if event.type == pygame.KEYDOWN:
                 if event.key in self.key_states:
                     self.key_states[event.key] = True
-
-            # Handle key releases
-            if event.type == pygame.KEYUP:
-                if event.key in self.key_states:
-                    self.key_states[event.key] = False
-
-            if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    # Return to galaxy view
                     game_state["view_mode"] = "galaxy"
                     game_state["selected_star"] = None
                     game_state["current_solar_system"] = None
 
-            # Handle mouse 
+            if event.type == pygame.KEYUP:
+                if event.key in self.key_states:
+                    self.key_states[event.key] = False
+
+            # Mouse input
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
 
                     for star in galaxy.stars:
-                        # Check if the mouse position is within the star's hitbox
-                        if star["rect"].collidepoint(event.pos):
-                            # If it is, set the selected star in the game state
-                            game_state["view_mode"] = "solar_system"
+                        if star["rect"].collidepoint(event.pos): # Check if the star was clicked
+                            # If the star was clicked, set the selected star and update the game state
+                            game_state["view_mode"] = "solar_system" 
                             game_state["selected_star"] = star
-                            game_state["current_solar_system"] = galaxy.solar_systems.get(star["name"]) # Fetch solar system
-                            camera.reset(0, 0, 1)  # Reset camera to default position and zoom 
-                            camera.center_camera_on_star()  # Center camera on the selected star
-
-
+                            game_state["current_solar_system"] = galaxy.solar_systems.get(star["name"])
+                            camera.reset(0, 0, 1)
+                            camera.center_camera_on_star()
+                            
                 if event.button == 3:  # Right click
-                    ("right_click", pygame.mouse.get_pos())
+                    print("Right click at", pygame.mouse.get_pos())
+
             if event.type == pygame.MOUSEWHEEL:
                 new_zoom = camera.target_zoom + (event.y * 0.1)
                 cursor_pos = pygame.mouse.get_pos()
-                camera.zoom_to(new_zoom, cursor_pos)  # Zoom towards the mouse position
+                camera.zoom_to(new_zoom, cursor_pos)
 
-    # Handle real-time camer a movement
+        self.handle_camera_panning(camera)
+
     def handle_camera_panning(self, camera):
-        if self.key_states[pygame.K_w]:  # Pan up
+        if self.key_states[pygame.K_w]:
             camera.move(0, -50)
-        if self.key_states[pygame.K_s]:  # Pan down
+        if self.key_states[pygame.K_s]:
             camera.move(0, 50)
-        if self.key_states[pygame.K_a]:  # Pan left
+        if self.key_states[pygame.K_a]:
             camera.move(-50, 0)
-        if self.key_states[pygame.K_d]:  # Pan right
+        if self.key_states[pygame.K_d]:
             camera.move(50, 0)
         if self.key_states[pygame.K_EQUALS]:
             camera.set_zoom(camera.target_zoom * 1.05)
         if self.key_states[pygame.K_MINUS]:
             camera.set_zoom(camera.target_zoom * 0.95)
 
+###############################################################################
+# Usage Example (in your main game loop)
+###############################################################################
 
-
-    
-
+# In your main loop, instantiate and use the appropriate input manager:
+# menu_input_manager = MenuInputManager()
+# gameplay_input_manager = GameplayInputManager()
+# ...
+# if game_state["current_state"] == "main_menu":
+#     menu_input_manager.process_input(game_state, gui_manager, menu_ui)
+# elif game_state["current_state"] == "gameplay":
+#     gameplay_input_manager.process_input(camera, galaxy, gui_manager, game_state)
     
         #if event.type == pygame.MOUSEBUTTONDOWN:
         #   mouse_x, mouse_y = pygame.mouse.get_pos()

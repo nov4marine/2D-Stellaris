@@ -3,9 +3,7 @@ import pygame
 
 class GUIManager:
     """global GUI for a given nation"""
-    def __init__(self, screen_width, screen_height, manager, nation):
-        self.screen_width = screen_width
-        self.screen_height = screen_height
+    def __init__(self, manager, nation):
         self.manager = manager
         self.nation = nation
 
@@ -23,18 +21,18 @@ class GUIManager:
         }
 
         # Create the top bar and collapsed panel as modular elements
-        self.top_bar = TopBar(0, 0, 1920, 50, manager, nation)
-        self.collapsed_panel = CollapsiblePanel(0, 50, 50, 300, 300, manager)
+        #self.top_bar = TopBar(0, 0, 1920, 50, manager, nation)
+        #self.collapsed_panel = CollapsiblePanel(0, 50, 50, 300, 300, manager)
         # Add the rest of the gloabal GUI elements for a given nation here 
 
     def clear_gui(self):
         # Hide / reset GUI elements that are exclusive to specific views
         pass
 
-    def initialize_core_hud(self, nation):
+    def initialize_core_hud(self):
         """This function initializes the core HUD elements that are always present in the game."""
         # Create the top bar and left collapsed panel as modular elements
-        self.top_bar = TopBar(0, 0, 1920, 50, self.manager, nation)
+        #self.top_bar = TopBar(0, 0, 1920, 50, self.manager, self.nation)
         self.collapsed_panel = CollapsiblePanel(0, 50, 50, 300, 300, self.manager)
 
     
@@ -48,7 +46,7 @@ class GUIManager:
 class TopBar:
     def __init__(self, x, y, width, height, manager, nation):
         self.panel = pygame_gui.elements.UIPanel(
-            relative_rect=pygame.Rect((x, y), (width, height)),
+            relative_rect=pygame.Rect(x, y, width, height),
             starting_height=1,
             manager=manager
         )
@@ -220,3 +218,73 @@ class GalaxyGUI:
 # cheat sheet for quick tips/ reference: 
 # partially transparent images: convert_alpha()
 #opaque images: convert()
+
+#fun and extremely useful tool for pygame GUI button grids
+class ButtonGrid:
+
+    def __init__(self, gui_manager, container, rows, cols, button_size, spacing, start_pos, button_texts=None, button_images=None):
+        """
+        Create a grid of buttons.
+
+        Args:
+            gui_manager: The pygame_gui.UIManager instance.
+            container: The container for the buttons (e.g., a UIPanel).
+            rows: Number of rows in the grid.
+            cols: Number of columns in the grid.
+            button_size: Tuple (width, height) for each button.
+            spacing: Tuple (horizontal_spacing, vertical_spacing) between buttons.
+            start_pos: Tuple (x, y) for the top-left position of the grid.
+            button_texts: List of texts for the buttons (optional).
+            button_images: List of images for the buttons (optional).
+
+        Returns:
+            A list of dictionaries containing button objects and their metadata.
+        """
+        self.gui_manager = gui_manager
+        self.container = container
+        self.rows = rows
+        self.cols = cols
+        self.button_size = button_size
+        self.spacing = spacing
+        self.start_pos = start_pos
+        self.button_texts = button_texts
+        self.button_images = button_images
+
+        self.buttons = []
+        self.button_width, button_height = button_size
+        self.horizontal_spacing, vertical_spacing = spacing
+        self.start_x, self.start_y = start_pos
+
+        for row in range(rows):
+            for col in range(cols):
+                # Calculate button position
+                x = self.start_x + col * (self.button_width + self.horizontal_spacing)
+                y = self.start_y + row * (button_height + vertical_spacing)
+
+                # Determine button text or image
+                text = button_texts[row * cols + col] if button_texts else ""
+                image = button_images[row * cols + col] if button_images else None
+
+                # Create the button
+                button = pygame_gui.elements.UIButton(
+                    relative_rect=pygame.Rect(x, y, self.button_width, button_height),
+                    text=text,
+                    manager=gui_manager,
+                    container=container
+                )
+
+                # Set the button image if provided
+                if image:
+                    button.set_image(pygame.image.load(image).convert_alpha())
+
+                # Store the button and its metadata
+                self.buttons.append({
+                    "button": button,
+                    "row": row,
+                    "col": col,
+                    "text": text,
+                    "image": image,
+                    "selected": False
+                })
+
+        return self.buttons

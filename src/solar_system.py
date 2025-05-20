@@ -4,12 +4,15 @@ import math
 
 class SolarSystem:
     """pretty self explanatory solar system object class"""
-    def __init__(self, star_type, star_name, max_radius=10000):
+    def __init__(self, star_type, star_name, max_radius=10000, planets=None):
         self.star_name = star_name
         self.star_type = star_type
         self.star_position = (0, 0) #star is at 0,0 in world space position
         self.max_radius = max_radius  # Maximum distance from the star
-        self.planets = self._generate_planets()
+        if planets is not None:
+            self.planets = planets
+        else:
+            self.planets = self._generate_planets()
 
     def _generate_planets(self):
         num_planets = random.randint(4, 10)  # Random number of planets
@@ -34,8 +37,16 @@ class SolarSystem:
                 "color": color,
                 "speed": speed,
                 "angle": angle,
-                "name": name
+                "name": name,
+                "habitable": False,
+                "colony": None,  # Placeholder for colony object
             })
+
+        # add a 20% chance to make one rocky planet habitable
+        if random.random() < 0.2:
+            habitable_planet = random.choice([p for p in planets if p["type"] == "rocky"])
+            habitable_planet["habitable"] = True
+            habitable_planet["color"] = (0, 255, 255)
 
         return planets
     
@@ -78,4 +89,50 @@ class SolarSystem:
             world_y = self.star_position[1] + math.sin(planet["angle"]) * planet["radius"]
             screen_x, screen_y = camera.apply(world_x, world_y)
             pygame.draw.circle(screen, planet["color"], (int(screen_x), int(screen_y)), int(planet["size"] * camera.zoom))
+
+    def create_capital_system(star_name="Sol", star_type="G-type", max_radius=10000):
+        #This function will later be expanded or copied to be capable of generating a customized solar system 
+        # Example: 5 planets, 3rd is habitable
+        planets = []
+        for i in range(5):
+            planet_type = "rocky" if i < 3 else "gas"
+            planet = {
+                "radius": 200 * (i + 1),
+                "size": 10 if planet_type == "rocky" else 20,
+                "type": planet_type,
+                "color": (0, 255, 255) if i == 2 else (150, 150, 150),
+                "speed": 0.001 * (i + 1),
+                "angle": 0,
+                "name": f"Capital Planet {i+1}",
+                "habitable": (i == 2),  # Only the 3rd planet is habitable
+            }
+            planets.append(planet)
+        return SolarSystem(star_type=star_type, star_name=star_name, max_radius=max_radius, planets=planets)
+
+    def assign_capital_system(galaxy, nation_params):
+        # 1. Pick a random star (or use a selection method)
+        candidate_stars = [star for star in galaxy.stars if star["name"] not in ["Sol", "Alpha Centauri"]]  # Optionally filter
+        chosen_star = random.choice(candidate_stars)
+        star_name = chosen_star["name"]
+
+        # 2. Get the corresponding solar system
+        system = galaxy.solar_systems[star_name]
+
+        # 3. Find a rocky planet to be the capital
+        rocky_planets = [p for p in system.planets if p["type"] == "rocky"]
+        if rocky_planets:
+            capital_planet = random.choice(rocky_planets) # Pick a random rocky planet
+            capital_planet["habitable"] = True # Mark it as habitable
+            capital_planet["name"] = nation_params["homeworld"]["planet"] # Use the name from nation_params
+            capital_planet["climate"] = nation_params["homeworld"]["climate"] # Use the climate from nation_params
+            capital_planet["color"] = (0, 255, 255)  # Visually distinct
+        else:
+            # Fallback: just use the 3rd planet
+            system.planets[3]["habitable"] = True
+            system.planets[3]["name"] = nation_params["homeworld"]["planet"]
+            system.planets[3]["climate"] = nation_params["homeworld"]["climate"]
+            system.planets[3]["color"] = (0, 255, 255)
+
+        # 4. Optionally, store the capital system/star name in the nation/player data
+        return capital_planet, star_name  # So you can reference it as the capital
 

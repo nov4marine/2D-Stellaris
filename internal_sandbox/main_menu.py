@@ -4,7 +4,6 @@ import pygame_gui
 from src.nation_storage import NationStorage
 from src.nation import Nation
 from src.game_state import game_state
-from src.action_manager import StartNewGameAction
 
 class BaseMenuUI:
     def __init__(self, screen, game_state, gui_manager):
@@ -23,71 +22,65 @@ class BaseMenuUI:
 
     # Add any other methods/properties you want all menu UIs to have
 
-class MainMenuUI(BaseMenuUI):
-    """Main menu UI class to handle the main menu setup."""
-    def __init__(self, screen, game_state, gui_manager):
-        super().__init__(screen, game_state, gui_manager)
-        self.screen = screen
-        self.game_state = game_state
-        self.gui_manager = gui_manager
-        self.gui_manager.clear_and_reset()  # Clear the GUI manager for the main menu
+def main_menu(screen, game_state, input_manager, gui_manager):
+    """Main menu function to display the main menu and handle user input."""
 
-    def draw_background(self):
-        # Load a background image (make sure you have the file in your directory)
-        background = pygame.image.load("C:/Users/nov4m/Documents/Python/Stellaris Github/2D-Stellaris/assets/menu_background.jpg")
-        self.screen.blit(background, (0, 0))  # Draw the background image
+    gui_manager.clear_and_reset()  # Clear the GUI manager for the main menu
 
-        # Draw a semi-transparent overlay
-        overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 128))  # Black with 50% opacity
-        self.screen.blit(overlay, (0, 0))
-        
-        # Title text
-        menu_font = pygame.font.Font(None, 50)  # Use a cool font if available
-        title = menu_font.render("Stellaris 2D", True, (255, 255, 255))
-        self.screen.blit(title, (self.screen.get_width() // 2 - title.get_width() // 2, 100))
+    # Load a background image (make sure you have the file in your directory)
+    background = pygame.image.load("C:/Users/nov4m/Documents/Python/Stellaris Github/2D-Stellaris/assets/menu_background.jpg")
+    screen.blit(background, (0, 0))  # Draw the background image
 
-        # Animated buttons (hover effects)
-        self.mouse_pos = pygame.mouse.get_pos()
-        button_font = pygame.font.Font(None, 36)
+    # Draw a semi-transparent overlay
+    overlay = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 128))  # Black with 50% opacity
+    screen.blit(overlay, (0, 0))
+    
+    # Title text
+    menu_font = pygame.font.Font(None, 50)  # Use a cool font if available
+    title = menu_font.render("Stellaris 2D", True, (255, 255, 255))
+    screen.blit(title, (screen.get_width() // 2 - title.get_width() // 2, 100))
 
-        # Start Button
-        self.start_rect = pygame.Rect(300, 250, 200, 50)
-        start_color = (255, 255, 255) if self.start_rect.collidepoint(self.mouse_pos) else (200, 200, 200)
-        pygame.draw.rect(self.screen, start_color, self.start_rect, border_radius=10)
-        start_text = button_font.render("Start New Game", True, (0, 0, 0))
-        self.screen.blit(start_text, (self.start_rect.x + 50, self.start_rect.y + 10))
+    # Animated buttons (hover effects)
+    mouse_pos = pygame.mouse.get_pos()
+    button_font = pygame.font.Font(None, 36)
 
-        # Exit Button
-        self.exit_rect = pygame.Rect(300, 350, 200, 50)
-        exit_color = (255, 255, 255) if self.exit_rect.collidepoint(self.mouse_pos) else (200, 200, 200)
-        pygame.draw.rect(self.screen, exit_color, self.exit_rect, border_radius=10)
-        exit_text = button_font.render("Exit", True, (0, 0, 0))
-        self.screen.blit(exit_text, (self.exit_rect.x + 75, self.exit_rect.y + 10))
+    # Start Button
+    start_rect = pygame.Rect(300, 250, 200, 50)
+    start_color = (255, 255, 255) if start_rect.collidepoint(mouse_pos) else (200, 200, 200)
+    pygame.draw.rect(screen, start_color, start_rect, border_radius=10)
+    start_text = button_font.render("Start New Game", True, (0, 0, 0))
+    screen.blit(start_text, (start_rect.x + 50, start_rect.y + 10))
 
-    def handle_events(self, event):
-        # Handle input events
+    # Exit Button
+    exit_rect = pygame.Rect(300, 350, 200, 50)
+    exit_color = (255, 255, 255) if exit_rect.collidepoint(mouse_pos) else (200, 200, 200)
+    pygame.draw.rect(screen, exit_color, exit_rect, border_radius=10)
+    exit_text = button_font.render("Exit", True, (0, 0, 0))
+    screen.blit(exit_text, (exit_rect.x + 75, exit_rect.y + 10))
+
+
+
+    # Handle input events
+    for event in pygame.event.get():
         if event.type == pygame.QUIT:
             game_state["current_state"] = "EXIT"
             sys.exit()
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            if self.start_rect.collidepoint(self.mouse_pos):
+            if start_rect.collidepoint(mouse_pos):
                 game_state["current_state"] = "new_game"
-            elif self.exit_rect.collidepoint(self.mouse_pos):
+            elif exit_rect.collidepoint(mouse_pos):
                 game_state["current_state"] = "EXIT"
                 sys.exit()
 
 
-class NewGameUI(BaseMenuUI):
-    """New game menu UI class to handle the new game setup."""
 
+
+class NewGameUI: 
     def __init__(self, screen, game_state, gui_manager):
-        super().__init__(screen, game_state, gui_manager)
         self.screen = screen
         self.game_state = game_state
         self.gui_manager = gui_manager
-        # ... your existing setup code ...
-        # Initialize the GUI elements here
 
         # Nation selection panel
         self.nation_selection_panel = pygame_gui.elements.UIPanel(
@@ -607,7 +600,6 @@ class NewGameUI(BaseMenuUI):
 
 
     def draw_background(self):
-        """Draw the background for the new game menu."""
         # Load a background image (make sure you have the file in your directory)
         self.background = pygame.image.load("C:/Users/nov4m/Documents/Python/Stellaris Github/2D-Stellaris/assets/menu_background.jpg")
         self.background = pygame.transform.scale(self.background, (self.screen.get_width(), self.screen.get_height()))  # Scale to fit the screen
@@ -619,132 +611,6 @@ class NewGameUI(BaseMenuUI):
         self.screen.blit(self.overlay, (0, 0))
 
     ###########################################
-    def handle_events(self, event):
-        if event.type == pygame.QUIT:
-            sys.exit()
-
-        if event.type == pygame_gui.UI_BUTTON_PRESSED:
-            if event.ui_element == self.start_game:
-                print("Starting new game...")
-                setup_dict = self.get_conditions()
-                start_game = StartNewGameAction(game_state, self.gui_manager, setup_dict)
-                start_game.execute()
-
-            elif event.ui_element == self.return_to_menu:
-                game_state["current_state"] = "main_menu"
-                game_state["new_game_initialized"] = False
-                print("Returning to main menu...")
-
-            elif event.ui_element == self.save_nation_button:
-                self.save_nation()
-            elif event.ui_element == self.delete_nation_button:
-                self.delete_selected_nation()
-
-            # ... (handle other menu buttons/tabs as needed) ...
-
-        # Handle selection lists, sliders, dropdowns, etc.
-        # (Copy your existing logic here, but keep it menu-specific)
-
-        # Menu Tabs
-            elif event.ui_element == self.nation_summary:
-                self.nation_panel.show()
-                self.nation_selection_panel.show()
-                self.nation_edit_panel.hide()
-                self.edit_nation_phase_panel.hide()
-                self.galaxy_setup_panel.hide()
-
-            elif event.ui_element == self.edit_nation:
-                self.nation_panel.hide()
-                self.nation_selection_panel.hide()
-                self.nation_edit_panel.show()
-
-                self.edit_empire_name_panel.show()
-                self.edit_species_panel.hide()
-                self.edit_homeworld_panel.hide()
-                self.edit_origin_panel.hide()
-                self.edit_government_panel.hide()
-                self.edit_laws_panel.hide()
-                self.edit_ship_appearance_panel.hide()
-                self.edit_ruler_panel.hide()
-
-                self.edit_nation_phase_panel.show()
-                self.galaxy_setup_panel.hide()
-
-            elif event.ui_element == self.galaxy_setup:
-                self.nation_panel.hide()
-                self.nation_selection_panel.hide()
-                self.nation_edit_panel.hide()
-                self.edit_nation_phase_panel.hide()
-                self.galaxy_setup_panel.show()
-
-            # Ethos Selection
-            for ethos_button in self.ethos_buttons:
-                if event.ui_element == ethos_button["button"]:
-                    ethos_name = ethos_button["name"]
-                    pair = ethos_button["pair"]
-
-                    #deselect the other ethos button in the pair
-                    for button in self.ethos_buttons:
-                        if button["name"] in pair and button["selected"]:
-                            button["selected"] = False
-                            button["button"].relative_rect.inflate_ip(-4, -4) #remove the border
-
-                    #select and highlight the clicked ethos button
-                    ethos_button["selected"] = True
-                    ethos_button["button"].relative_rect.inflate_ip(4, 4) #add the border
-                    self.selected_ethos[pair[0]] = ethos_name #track the selected ethos for this pair
-
-        # Edit Nation Phases
-
-        EDIT_PHASES = {
-            "Empire Name": "edit_empire_name_panel",
-            "Species": "edit_species_panel",
-            "Homeworld": "edit_homeworld_panel",
-            "Origin": "edit_origin_panel",
-            "Government and Ethos": "edit_government_panel",
-            "Laws": "edit_laws_panel",
-            "Ship Appearance": "edit_ship_appearance_panel",
-            "Ruler": "edit_ruler_panel",
-        }
-
-        if event.type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION:
-            if event.ui_element == self.edit_nation_phases:
-                # Hide all panels first
-                for panel_name in EDIT_PHASES.values():
-                    getattr(self, panel_name).hide()
-                # Show the selected panel
-                selected_panel = EDIT_PHASES.get(event.text)
-                if selected_panel:
-                    getattr(self, selected_panel).show()
-
-            if event.ui_element == self.nation_list:
-                self.load_nation_details(event.text)
-
-        if event.type == pygame_gui.UI_HORIZONTAL_SLIDER_MOVED:
-            # Update slider labels dynamically
-            if event.ui_element == self.hyperlane_density_slider:
-                self.hyperlane_density_label.set_text(
-                    f"Hyperlane Density: {self.hyperlane_density_slider.get_current_value():.1f}"
-                )
-            elif event.ui_element == self.number_of_nations_slider:
-                self.number_of_nations_label.set_text(
-                    f"Number of Nations: {int(self.number_of_nations_slider.get_current_value())}"
-                )
-            elif event.ui_element == self.advanced_ai_starts_slider:
-                self.advanced_ai_starts_label.set_text(
-                    f"Advanced AI Starts: {int(self.advanced_ai_starts_slider.get_current_value())}"
-                )
-            elif event.ui_element == self.fallen_empires_slider:
-                self.fallen_empires_label.set_text(
-                    f"Fallen Empires: {int(self.fallen_empires_slider.get_current_value())}"
-                )
-
-
-        if event.type == pygame_gui.UI_DROP_DOWN_MENU_CHANGED:
-            if event.ui_element == self.homeworld_climate:
-                self.homeworld_selected = event.text
-                print(f"Homeworld Climate Selected: {self.homeworld_climate.selected_option}")
-
 
     def get_conditions(self):
         """Get the conditions for the game setup."""
@@ -781,6 +647,12 @@ class NewGameUI(BaseMenuUI):
         nations = NationStorage.load_nations()
         return [nation["name"] for nation in nations]
     
+    def handle_events(self, event):
+        if event.type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element == self.save_nation_button:
+                self.save_nation()
+            elif event.ui_element == self.delete_nation_button:
+                self.delete_selected_nation()
 
     def save_nation(self):
         """Save the currently edited nation."""
@@ -839,3 +711,8 @@ class NewGameUI(BaseMenuUI):
                 # Set first ruler (if you have a field for it)
                 # self.ruler_name_entry.set_text(nation.first_ruler)
                 break
+
+    def handle_events(self, event):
+        if event.type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION:
+            if event.ui_element == self.nation_list:
+                self.load_nation_details(event.text)

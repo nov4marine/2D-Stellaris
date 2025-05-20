@@ -1,4 +1,6 @@
 # src/galaxy.py
+import scipy.spatial
+import networkx as nx
 
 import pygame
 import random
@@ -7,11 +9,13 @@ from src.solar_system import SolarSystem
 
 class Galaxy:
     def __init__(self, galaxy_size=8000, num_stars=1000):
-        self.galaxy_size = galaxy_size
-        self.num_stars = num_stars
+        self.galaxy_size = galaxy_size #more like the size or radius of the galaxy map, not the actual size of the galaxy
+        self.num_stars = num_stars #number of stars in the galaxy
         self.stars = self._generate_stars(num_stars, galaxy_size)
         self.solar_systems = self._generate_solar_systems()
-        self.hyperlanes = self._generate_hyperlanes()
+        #self.hyperlanes = self.generate_delaunay_hyperlanes()  # or self._generate_voronoi_hyperlanes()
+        #self.hyperlanes = self.generate_voronoi_hyperlanes()  # Uncomment to use Voronoi hyperlanes
+        self.hyperlanes = self.generate_prim_hyperlanes()  # Uncomment to use Prim's hyperlanes
 
     def _generate_stars(self, num_stars, galaxy_size):
         """Generate stars with random positions and attributes in a galaxy shape."""
@@ -19,8 +23,8 @@ class Galaxy:
         stars = []
 
         num_arms = 4  # Number of spiral arms
-        arm_tightness = 0.4  # Controls arm winding
-        arm_spread = 0.05  # Spread around arms
+        arm_tightness = 2  # Controls arm winding
+        arm_spread = 0.03  # Spread around arms
         center_radius = galaxy_size * 0.1  # Minimum radius for the empty core
         overall_rotation = math.pi / 4  # Rotate the entire galaxy
         min_distance = 100  # Minimum distance between stars
@@ -37,8 +41,8 @@ class Galaxy:
                 theta = overall_rotation + arm_angle + arm_tightness * r
 
                 # Convert polar to Cartesian with tighter spread
-                x = r * math.cos(theta) + random.uniform(-arm_spread * r, arm_spread * r)
-                y = r * math.sin(theta) + random.uniform(-arm_spread * r, arm_spread * r)
+                x = r * math.cos(theta) + random.uniform(-arm_spread * r * 0.5, arm_spread * r * 0.5)
+                y = r * math.sin(theta) + random.uniform(-arm_spread * r * 0.5, arm_spread * r * 0.5)
 
                 # Check minimum distance to other stars
                 too_close = False
@@ -101,26 +105,84 @@ class Galaxy:
             start_x, start_y = camera.apply(line[0][0], line[0][1])
             end_x, end_y = camera.apply(line[1][0], line[1][1])
             pygame.draw.line(screen, (255, 255, 255, 50), (start_x, start_y), (end_x, end_y), 1)
-    
-    def _generate_hyperlanes(self, max_distance=300):
-        """Generate hyperlane connections between nearby stars."""
-        hyperlanes = []  # Stores line coordinates
+
+    def generate_delaunay_hyperlanes(self,max_connections=3):
+        """Creates a structured, connected hyperlane network using a hybrid approach."""
+        points = [(star["x"], star["y"]) for star in self.stars]
+        tri = scipy.spatial.Delaunay(points)
         
-        for star in self.stars:
-            star_x, star_y = star["x"], star["y"]
-            
-            for other_star in self.stars:
-                if star == other_star:
+        # Step 1: Build a graph from Delaunay edges
+        G = nx.Graph()
+        star_connections = {point: [] for point in points}
+
+        for simplex in tri.simplices:
+            for i in range(3):
+                start = points[simplex[i]]
+                end = points[simplex[(i + 1) % 3]]
+                distance = math.sqrt((start[0] - end[0])**2 + (start[1] - end[1])**2)
+
+                G.add_edge(start, end, weight=distance)
+
+        # Step 2: Use Minimum Spanning Tree (MST) to ensure global connectivity
+        mst_edges = list(nx.minimum_spanning_edges(G, algorithm="kruskal", data=False))
+        
+        # Step 3: Select only a limited number of Delaunay connections per star
+        for start, end in mst_edges:
+            star_connections[start].append(end)
+            star_connections[end].append(start)
+
+        for simplex in tri.simplices:
+            for i in range(3):
+                start = points[simplex[i]]
+                end = points[simplex[(i + 1) % 3]]
+
+                if len(star_connections[start]) < max_connections and len(star_connections[end]) < max_connections:
+                    star_connections[start].append(end)
+                    star_connections[end].append(start)
+
+        # Convert dictionary to hyperlane list
+        hyperlanes = [(start, end) for start in star_connections for end in star_connections[start]]
+        return hyperlanes
+
+    def generate_prim_hyperlanes(self):
+        """Generates a Minimum Spanning Tree (MST) hyperlane network using Prim's Algorithm."""
+        
+        points = [(star["x"], star["y"]) for star in self.stars]
+        G = nx.Graph()
+
+        # ✅ Step 1: Create a fully connected graph with weighted edges
+        for i, start in enumerate(points):
+            for j, end in enumerate(points):
+                if i == j:
                     continue  # Skip self-connections
                 
-                other_x, other_y = other_star["x"], other_star["y"]
-                
-                # Compute distance
-                distance = math.sqrt((star_x - other_x)**2 + (star_y - other_y)**2)
-                
-                if distance <= max_distance:  # ✅ If close enough, create a hyperlane
-                    hyperlanes.append(((star_x, star_y), (other_x, other_y)))
+                distance = math.sqrt((start[0] - end[0])**2 + (start[1] - end[1])**2)
+                G.add_edge(start, end, weight=distance)
 
+        # ✅ Step 2: Compute MST using Prim’s Algorithm
+        mst = nx.minimum_spanning_tree(G, algorithm="prim", weight="weight")
+
+        # ✅ Step 3: Extract hyperlane edges from the MST
+        hyperlanes = list(mst.edges)
+
+        return hyperlanes
+
+    def generate_voronoi_hyperlanes(self):
+        """Creates hyperlanes based on Voronoi adjacency."""
+        points = [(star["x"], star["y"]) for star in self.stars]
+        vor = scipy.spatial.Voronoi(points)
+        
+        hyperlanes = []
+        
+        # Each ridge represents a connection between two Voronoi cells
+        for ridge in vor.ridge_vertices:
+            if -1 in ridge:  # Ignore edges extending beyond the map
+                continue
+            
+            start = vor.vertices[ridge[0]]
+            end = vor.vertices[ridge[1]]
+            hyperlanes.append((start, end))
+        
         return hyperlanes
 
     def get_solar_systems(self, star_name):
