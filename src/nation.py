@@ -1,10 +1,13 @@
 from src.interest_group import InterestGroup
 from src.colony import *
 from src.economy import *
+from src.military import *
+from src.government import *
 
 class Nation:
     def __init__(self, name, population, species, homeworld, ethos, origin, civics, government, ship_appearance=None, first_ruler=None):
         self.name = name
+        self.flag = None #flag of the nation
         self.gdp = 0 #the big one that determines everything else
         self.population = population #starting population (instance of pop? or total number?)
         self.species = species # a list of all species in the nation. initially just the starting species
@@ -23,11 +26,15 @@ class Nation:
         self.research = None #research manager
         self.research_rate = 0 #research rate, probably a percentage of the total research points available
         self.modifiers = [] #list of modifiers that affect the nation. this will be a list of dictionaries, each with a name and value
+        self.planets = [] #list of colonized planets in the nation. 
 
-        # above this line is the basic information about the nation. below are components of the nation that will be used in the game
+        self.bureaucracy = 0
+        self.budget = 0
         
+        # above this line is the basic information about the nation. below are components of the nation that will be used in the game
+        #self.tax_department = IRS() # the tax department for the nation.
         self.market = Market(self) # the market for the nation.
-        self.military = None # probably make this a class later that represents and possibly manages the military
+        self.military = Military(self) 
         self.interest_groups = [] #list of interest groups in the nation
         self.diplomatic_relations = {} #dictionary of relations with other nations (might later be expanded to types of relations)
         self.state_religion = None #state religion, if any. None if secular, state atheism is a religion in this model lol
@@ -120,9 +127,7 @@ class Nation:
 
         }
 
-        self.bureaucracy = 0
-        self.budget = 0
-        self.research_points = 0
+
 
     def initialize_nation(self):
         """Initialize the nation."""
@@ -131,19 +136,23 @@ class Nation:
 
     def initialize_capital(self):
         """Initialize the capital system and planet."""
-        self.capital = self.homeworld[0]
-        self.capital_system = self.homeworld[1]
-        self.capital["colony"] = Colony(
+        self.capital = self.homeworld[0]         # Planet object
+        self.capital_system = self.homeworld[1]  # SolarSystem object
+
+        # Attach a Colony to the planet
+        self.capital.colony = Colony(
             planet=self.capital,
-            type=self.capital["climate"],
+            type=getattr(self.capital, "climate", None),
             habitability=100,
-            land_area=self.capital["size"],
+            land_area=getattr(self.capital, "size", None),
             owner=self,
-            name=self.capital["name"],
+            name=getattr(self.capital, "name", None),
             market=self.market,
             initial_homeworld=True,
             initial_population=self.population,
         )
+        self.colonies.append(self.capital.colony)
+        self.planets.append(self.capital)
         
 
     def initialize_interest_groups(self):

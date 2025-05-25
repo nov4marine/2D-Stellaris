@@ -1,8 +1,7 @@
 import pygame
 import pygame_gui
 import sys
-
-# Only import what you need, and avoid circular imports!
+from src.game_state import game_state
 
 ###############################################################################
 # Menu Input Manager
@@ -13,19 +12,24 @@ class MenuInputManager:
 
     def process_input(self, game_state, gui_manager, menu_ui):
         for event in pygame.event.get():
-            #print(event)
             gui_manager.process_events(event)
             menu_ui.handle_events(event)
 
-
 ###############################################################################
-# Gameplay Input Manager
+# Global Input Manager (in gameplay)
+# Handles input events for the entire game, including galaxy and solar system views.
 ###############################################################################
 
-class GameplayInputManager:
-    """Handles input events for in-game controls."""
+class GlobalInputManager:
+    """Handles all input events for a given player and nation, with different modes for view states."""
+    def __init__(self, player, nation=None):
+        self.player = player
+        self.nation = nation
+        self.camera = player.camera
+        self.pygui_manager = game_state["pygui_manager"]
+        self.galaxy = game_state["galaxy"]
+        self.game_ui = player.global_gui_manager
 
-    def __init__(self, nation):
         self.key_states = {
             pygame.K_w: False,
             pygame.K_s: False,
@@ -34,68 +38,98 @@ class GameplayInputManager:
             pygame.K_EQUALS: False,
             pygame.K_MINUS: False
         }
-        self.nation = nation
 
-    def process_input(self, camera, galaxy, gui_manager, game_state):
+    def process_input(self):
         for event in pygame.event.get():
+
+            self.pygui_manager.process_events(event)
+            self.game_ui.handle_all_gui_events(event)
+
+            # Global input (quit, ESC, etc.)
             if event.type == pygame.QUIT:
                 sys.exit()
 
-            gui_manager.process_events(event)
+            if self.player.states["view_mode"] == "galaxy":
+                self.handle_galaxy_input(event)
+            elif self.player.states["view_mode"] == "solar_system":
+                solar_system = self.player.states["current_solar_system"].solar_system
+                self.handle_solar_system_input(event, solar_system)
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        # Example: always return to galaxy view
+                        self.player.states["view_mode"] = "galaxy"
+                        self.player.states["current_solar_system"] = None
+        self.handle_camera_input()
 
-            # Key presses/releases
-            if event.type == pygame.KEYDOWN:
-                if event.key in self.key_states:
-                    self.key_states[event.key] = True
-                if event.key == pygame.K_ESCAPE:
-                    game_state["view_mode"] = "galaxy"
-                    game_state["selected_star"] = None
-                    game_state["current_solar_system"] = None
+    def handle_galaxy_input(self, event):
 
-            if event.type == pygame.KEYUP:
-                if event.key in self.key_states:
-                    self.key_states[event.key] = False
+        # Key presses/releases
+        if event.type == pygame.KEYDOWN:
+            if event.key in self.key_states:
+                self.key_states[event.key] = True
+        if event.type == pygame.KEYUP:
+            if event.key in self.key_states:
+                self.key_states[event.key] = False
 
-            # Mouse input
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:  # Left click
+        # Mouse input
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:  # Left click
+                for star in self.galaxy.galaxy_stars:
+                    if star.rect and star.rect.collidepoint(event.pos):
+                        self.player.states["view_mode"] = "solar_system"
+                        self.player.states["current_solar_system"] = star
 
-                    for star in galaxy.stars:
-                        if star["rect"].collidepoint(event.pos): # Check if the star was clicked
-                            # If the star was clicked, set the selected star and update the game state
-                            game_state["view_mode"] = "solar_system" 
-                            game_state["selected_star"] = star
-                            game_state["current_solar_system"] = galaxy.solar_systems.get(star["name"])
-                            camera.reset(0, 0, 1)
-                            camera.center_camera_on_star()
-                            
-                if event.button == 3:  # Right click
-                    print("Right click at", pygame.mouse.get_pos())
+                        self.camera.reset(0, 0, 1)
+                        self.camera.center_camera_on_star()
+            if event.button == 3:  # Right click
+                print("Right click at", pygame.mouse.get_pos())
 
-            if event.type == pygame.MOUSEWHEEL:
-                new_zoom = camera.target_zoom + (event.y * 0.1)
-                cursor_pos = pygame.mouse.get_pos()
-                camera.zoom_to(new_zoom, cursor_pos)
+        if event.type == pygame.MOUSEWHEEL:
+            new_zoom = self.camera.target_zoom + (event.y * 0.1)
+            cursor_pos = pygame.mouse.get_pos()
+            self.camera.zoom_to(new_zoom, cursor_pos)
 
-        self.handle_camera_panning(camera)
 
-    def handle_camera_panning(self, camera):
+    def handle_solar_system_input(self, event, solar_system):
+
+        # Key presses/releases
+        if event.type == pygame.KEYDOWN:
+            if event.key in self.key_states:
+                self.key_states[event.key] = True
+        if event.type == pygame.KEYUP:
+            if event.key in self.key_states:
+                self.key_states[event.key] = False
+
+        # Mouse input
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:  # Left click
+                # Example: select a planet if clicked
+                for body in solar_system.bodies:
+                    if body.rect and body.rect.collidepoint(event.pos):
+                        print(f"Selected planet: {body.name}")
+            if event.button == 3:  # Right click
+                print("Right click at", pygame.mouse.get_pos())
+
+        if event.type == pygame.MOUSEWHEEL:
+            new_zoom = self.camera.target_zoom + (event.y * 0.1)
+            cursor_pos = pygame.mouse.get_pos()
+            self.camera.zoom_to(new_zoom, cursor_pos)
+
+    def handle_camera_input(self):
         if self.key_states[pygame.K_w]:
-            camera.move(0, -50)
+            self.camera.move(0, -50)
         if self.key_states[pygame.K_s]:
-            camera.move(0, 50)
+            self.camera.move(0, 50)
         if self.key_states[pygame.K_a]:
-            camera.move(-50, 0)
+            self.camera.move(-50, 0)
         if self.key_states[pygame.K_d]:
-            camera.move(50, 0)
+            self.camera.move(50, 0)
         if self.key_states[pygame.K_EQUALS]:
-            camera.set_zoom(camera.target_zoom * 1.05)
+            self.camera.set_zoom(self.camera.target_zoom * 1.05)
         if self.key_states[pygame.K_MINUS]:
-            camera.set_zoom(camera.target_zoom * 0.95)
+            self.camera.set_zoom(self.camera.target_zoom * 0.95)
 
-###############################################################################
-# Usage Example (in your main game loop)
-###############################################################################
+
 
 # In your main loop, instantiate and use the appropriate input manager:
 # menu_input_manager = MenuInputManager()

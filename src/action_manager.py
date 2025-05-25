@@ -2,7 +2,6 @@ from src.nation import Nation
 from src.colony import *
 from src.galaxy import Galaxy
 from src.solar_system import SolarSystem
-from src.gui import GUIManager, GalaxyGUI, SolarSystemGUI
 from src.player_manager import PlayerManager, HumanPlayer, AIPlayer
 
 from src.game_state import game_state
@@ -52,10 +51,9 @@ class GenericAction(Action):
 
 class StartNewGameAction(Action):
     """Behold, the holiest of all actions: starting a new game."""
-    def __init__(self, game_state, manager, setup_dict):
+    def __init__(self, game_state, setup_dict):
         super().__init__(None) # No executor needed for this action
         self.game_state = game_state
-        self.manager = manager
         self.setup_dict = setup_dict
         self.capital_system = None
 
@@ -63,6 +61,9 @@ class StartNewGameAction(Action):
         # Logic to start a new game
         print("Starting a new game...")
         #pull parameters from setup_dict from the setup menu
+
+        game_state["global_ui_manager"].clear_and_reset()  # Clear the GUI manager for gameplay
+        
         galaxy_paremeters = self.setup_dict["galaxy_parameters"]
         nation_parameters = self.setup_dict["nation_parameters"]
 
@@ -88,7 +89,7 @@ class StartNewGameAction(Action):
             pass #for now, just pass
         
         #add the human player (in this case THE player in single player)
-        self.game_state["player_manager"].add_player(HumanPlayer(name="Player 1")) #add the human player
+        self.game_state["player_manager"].add_player(HumanPlayer(name="Player 1", is_local=True)) #add the human player
         #create custom nation for the human player based on the setup menu
         capital_system = SolarSystem.assign_capital_system(self.game_state["galaxy"], nation_parameters)
         print(f"Capital system assigned: {capital_system}")
@@ -103,7 +104,7 @@ class StartNewGameAction(Action):
             government=nation_parameters["government"],
         )
         #assign that nation to the human player
-        self.game_state["player_manager"].assign_nation(self.game_state["player_manager"].players[-1], nation1, self.manager)
+        self.game_state["player_manager"].assign_nation(self.game_state["player_manager"].players[-1], nation1)
 
         for nation in self.game_state["player_manager"].nation_assignments.values():
             nation.initialize_nation()  # Initialize each nation

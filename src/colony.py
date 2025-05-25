@@ -8,6 +8,7 @@ class Colony:
         self.owner = owner 
         self.name = name
         self.market = market
+        self.colony_designation = None #Stellaris specialization
         self.initial_homeworld = initial_homeworld #is this the homeworld of the owner?
         self.initial_population = initial_population #initial pops to be generated upon colonization
         self.planet_modifiers = {} #dictionary for planet-wide modifiers e.g. {"industrial edict": 1.2}

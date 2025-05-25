@@ -627,7 +627,7 @@ class NewGameUI(BaseMenuUI):
             if event.ui_element == self.start_game:
                 print("Starting new game...")
                 setup_dict = self.get_conditions()
-                start_game = StartNewGameAction(game_state, self.gui_manager, setup_dict)
+                start_game = StartNewGameAction(game_state, setup_dict)
                 start_game.execute()
 
             elif event.ui_element == self.return_to_menu:

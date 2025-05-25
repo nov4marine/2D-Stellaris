@@ -1,59 +1,111 @@
 import pygame
 import random
 import math
+from src.game_state import game_state
 
 class SolarSystem:
-    """pretty self explanatory solar system object class"""
-    def __init__(self, star_type, star_name, max_radius=10000, planets=None):
-        self.star_name = star_name
-        self.star_type = star_type
-        self.star_position = (0, 0) #star is at 0,0 in world space position
-        self.max_radius = max_radius  # Maximum distance from the star
-        if planets is not None:
-            self.planets = planets
-        else:
-            self.planets = self._generate_planets()
+    """Container for all celestial bodies in a system (star, planets, moons, asteroids, etc.)"""
+    def __init__(self, name, owner=None, bodies=None):
+        self.name = name
+        self.owner = owner
+        self.bodies = bodies if bodies is not None else self._generate_bodies()
 
-    def _generate_planets(self):
-        num_planets = random.randint(4, 10)  # Random number of planets
-        planet_colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), (255, 0, 255)]
-        #add more planet properties/attributes here later
-        planets = []
+    def change_owner(self, new_owner):
+        """Change the owner of the solar system."""
+        self.owner = new_owner 
 
+    def _generate_bodies(self):
+        bodies = []
+
+        # --- Generate the star ---
+        star_type = random.choice(["G", "K", "M", "F", "A"])
+        star = Star(
+            name=f"{self.name} Star",
+            star_type=star_type,
+            radius=0,  # At system center
+            size=40,
+            color=None,  # Will be set by Star class based on type
+            angle=0,
+            speed=0,
+            parent=None
+        )
+        bodies.append(star)
+
+        # --- Generate planets ---
+        num_planets = random.randint(4, 10)
         for i in range(num_planets):
-            orbital_radius = 200 * (1.5 ** i) * random.uniform(0.9, 1.1)  # Distance from the star
-            distance_ratio = orbital_radius / self.max_radius  # Normalize distance relative to system size
-            planet_type = self.determine_planet_type(distance_ratio)  # Determine planet type based on distance
+            orbital_radius = 600 * (1.5 ** i)
+            distance_ratio = orbital_radius / 10000
+            planet_type = self.determine_planet_type(distance_ratio)
+            size = random.randint(5, 10) if planet_type == "rocky" else random.randint(10, 20)
+            color = None  # Let Planet class pick based on type, or randomize here
+            speed = random.uniform(0.5, 1.5) / orbital_radius * 0.5
+            angle = random.uniform(0, 2 * math.pi)
+            name = f"{self.name} Planet {i+1}"
+            planet = Planet(
+                name=name,
+                radius=orbital_radius,
+                size=size,
+                color=color,
+                angle=angle,
+                speed=speed,
+                parent=star,
+                type=planet_type
+            )
+            bodies.append(planet)
 
-            size = random.randint(5, 10) if type == "rocky" else random.randint(10,20) # Random size of the planet
-            color = random.choice(planet_colors)  # Random planet color
-            speed = random.uniform(0.5, 1.5) / orbital_radius * 0.5  # Orbital speed based on distance
-            angle = random.uniform(0, 2 * math.pi)  # Random initial position in orbit
-            name = f"object {i + 1}"
-            planets.append({
-                "radius": orbital_radius,
-                "size": size,
-                "type": planet_type,
-                "color": color,
-                "speed": speed,
-                "angle": angle,
-                "name": name,
-                "habitable": False,
-                "colony": None,  # Placeholder for colony object
-            })
+            # --- Optionally generate moons for some planets ---
+            if planet_type == "rocky" and random.random() < 0.4:
+                num_moons = random.randint(1, 2)
+                for m in range(num_moons):
+                    moon_radius = planet.size * 3 + random.randint(10, 30)
+                    moon_angle = random.uniform(0, 2 * math.pi)
+                    moon = Moon(
+                        name=f"{planet.name} Moon {m+1}",
+                        radius=moon_radius,
+                        size=random.randint(2, 5),
+                        color=(180, 180, 180),
+                        angle=moon_angle,
+                        speed=random.uniform(0.001, 0.003),
+                        parent=planet
+                    )
+                    bodies.append(moon)
 
-        # add a 20% chance to make one rocky planet habitable
-        if random.random() < 0.2:
-            habitable_planet = random.choice([p for p in planets if p["type"] == "rocky"])
-            habitable_planet["habitable"] = True
-            habitable_planet["color"] = (0, 255, 255)
+             # --- Optionally generate moons for gas giants ---
+            if planet_type == "gas" and random.random() < 0.8:
+                num_moons = random.randint(1, 8)
+                for m in range(num_moons):
+                    moon_radius = planet.size * 3 + random.randint(10, 30)
+                    moon_angle = random.uniform(0, 2 * math.pi)
+                    moon = Moon(
+                        name=f"{planet.name} Moon {m+1}",
+                        radius=moon_radius,
+                        size=random.randint(2, 5),
+                        color=(180, 180, 180),
+                        angle=moon_angle,
+                        speed=random.uniform(0.001, 0.003),
+                        parent=planet
+                    )
+                    bodies.append(moon)
 
-        return planets
-    
+        # --- Optionally generate asteroids ---
+        for _ in range(random.randint(10, 20)):
+            belt_radius = random.uniform(1500, 3000)
+            belt_angle = random.uniform(0, 2 * math.pi)
+            asteroid = Asteroid(
+                name=f"{self.name} Asteroid",
+                radius=belt_radius,
+                size=random.randint(1, 3),
+                color=(120, 120, 120),
+                angle=belt_angle,
+                speed=random.uniform(0.0005, 0.0015),
+                parent=star
+            )
+            #bodies.append(asteroid)
+
+        return bodies
+
     def determine_planet_type(self, distance_ratio):
-        """
-        Weighted probabilities for planet types based on distance ratio.
-        """
         weights = [
             max(0, 1.0 - distance_ratio * 2),  # Rocky more likely closer in
             max(0, distance_ratio),            # Gas more likely farther out
@@ -62,77 +114,162 @@ class SolarSystem:
         return random.choices(["rocky", "gas", "icy"], weights=weights, k=1)[0]
 
     def update(self, time_delta):
-        """Update planet positions based on orbital mechanics"""
-        for planet in self.planets:
-            planet["angle"] += planet["speed"] * time_delta #increment angle based on speed
-            planet["angle"] %= 2 * math.pi  # Keep angle within 0 to 2π to avoid overflow
+        for body in self.bodies:
+            body.update_orbit(time_delta)
 
-    def render_solarsystem(self, screen, camera, selected_star):
-        """draw the star and planets"""
-        # Draw the star (converted to screen coordinates using camera)
-        screen_star_x, screen_star_y = camera.apply(self.star_position[0], self.star_position[1])
-        pygame.draw.circle(screen, (255, 255, 0), (int(screen_star_x), int(screen_star_y)), 40 * camera.zoom)  # Draw the star
+    def render(self, screen, camera):
+        # Draw background
+        screen.fill((10, 10, 30))  # Example: dark space background
 
-        # Draw faint orbital rings
-        for planet in self.planets:
-            # Calculate screen position for the orbital radius
-            screen_x, screen_y = camera.apply(self.star_position[0], self.star_position[1])
-            orbital_radius = planet["radius"] * camera.zoom
-            
-            # Draw a thin circle outline for the orbital ring
-            ring_color = (200, 200, 200)  # Light gray
-            pygame.draw.circle(screen, ring_color, (int(screen_x), int(screen_y)), int(orbital_radius), 1)
+        # Draw faint orbital rings for orbiting bodies
+        for body in self.bodies:
+            if body.parent is not None:
+                parent_pos = body.parent.get_position()
+                world_x, world_y = parent_pos
+                screen_x, screen_y = camera.apply(world_x, world_y)
+                # Draw a faint ring for the orbit
+                pygame.draw.circle(
+                    screen,
+                    (100, 100, 140),  # Faint blue-gray color
+                    (int(screen_x), int(screen_y)),
+                    int(body.radius * camera.zoom),
+                    1  # Thin line
+                )
 
-        # Draw planets
-        for planet in self.planets:
-            world_x = self.star_position[0] + math.cos(planet["angle"]) * planet["radius"]
-            world_y = self.star_position[1] + math.sin(planet["angle"]) * planet["radius"]
-            screen_x, screen_y = camera.apply(world_x, world_y)
-            pygame.draw.circle(screen, planet["color"], (int(screen_x), int(screen_y)), int(planet["size"] * camera.zoom))
+        # Draw all bodies (stars, planets, moons, asteroids)
+        for body in self.bodies:
+            if body.parent is not None:
+                parent_pos = body.parent.get_position()
+            else:
+                parent_pos = (0, 0)  # System center
+            body.draw(screen, camera, parent_pos)
 
-    def create_capital_system(star_name="Sol", star_type="G-type", max_radius=10000):
-        #This function will later be expanded or copied to be capable of generating a customized solar system 
-        # Example: 5 planets, 3rd is habitable
-        planets = []
-        for i in range(5):
-            planet_type = "rocky" if i < 3 else "gas"
-            planet = {
-                "radius": 200 * (i + 1),
-                "size": 10 if planet_type == "rocky" else 20,
-                "type": planet_type,
-                "color": (0, 255, 255) if i == 2 else (150, 150, 150),
-                "speed": 0.001 * (i + 1),
-                "angle": 0,
-                "name": f"Capital Planet {i+1}",
-                "habitable": (i == 2),  # Only the 3rd planet is habitable
-            }
-            planets.append(planet)
-        return SolarSystem(star_type=star_type, star_name=star_name, max_radius=max_radius, planets=planets)
+    def get_star(self):
+        return next((b for b in self.bodies if b.body_type == "star"), None)
 
+    def get_planets(self):
+        return [b for b in self.bodies if b.body_type == "planet"]
+
+    def get_moons(self):
+        return [b for b in self.bodies if b.body_type == "moon"]
+
+    def get_asteroids(self):
+        return [b for b in self.bodies if b.body_type == "asteroid"]
+
+    @staticmethod
     def assign_capital_system(galaxy, nation_params):
-        # 1. Pick a random star (or use a selection method)
-        candidate_stars = [star for star in galaxy.stars if star["name"] not in ["Sol", "Alpha Centauri"]]  # Optionally filter
-        chosen_star = random.choice(candidate_stars)
-        star_name = chosen_star["name"]
+        """
+        Assigns a random SolarSystem and planet as the nation's homeworld.
+        Modifies the planet to be habitable and sets its properties.
+        Returns (planet, system_name).
+        """
+        # Pick a random SolarSystem that is not already owned
+        unowned_systems = [s for s in galaxy.solar_systems.values() if s.owner is None]
+        if not unowned_systems:
+            raise Exception("No unowned solar systems available for capital assignment.")
+        system = random.choice(unowned_systems)
+        system.owner = nation_params.get("name", "Unknown")
 
-        # 2. Get the corresponding solar system
-        system = galaxy.solar_systems[star_name]
-
-        # 3. Find a rocky planet to be the capital
-        rocky_planets = [p for p in system.planets if p["type"] == "rocky"]
+        # Prefer rocky planets, fallback to any planet
+        rocky_planets = [p for p in system.get_planets() if getattr(p, "type", None) == "rocky"]
         if rocky_planets:
-            capital_planet = random.choice(rocky_planets) # Pick a random rocky planet
-            capital_planet["habitable"] = True # Mark it as habitable
-            capital_planet["name"] = nation_params["homeworld"]["planet"] # Use the name from nation_params
-            capital_planet["climate"] = nation_params["homeworld"]["climate"] # Use the climate from nation_params
-            capital_planet["color"] = (0, 255, 255)  # Visually distinct
+            planet = random.choice(rocky_planets)
         else:
-            # Fallback: just use the 3rd planet
-            system.planets[3]["habitable"] = True
-            system.planets[3]["name"] = nation_params["homeworld"]["planet"]
-            system.planets[3]["climate"] = nation_params["homeworld"]["climate"]
-            system.planets[3]["color"] = (0, 255, 255)
+            planets = system.get_planets()
+            if not planets:
+                raise Exception(f"No planets found in system {system.name}")
+            planet = random.choice(planets)
 
-        # 4. Optionally, store the capital system/star name in the nation/player data
-        return capital_planet, star_name  # So you can reference it as the capital
+        # Set planet as habitable and assign properties
+        planet.habitable = True
+        planet.name = nation_params["homeworld"]["planet"]
+        planet.climate = nation_params["homeworld"]["climate"]
+        planet.color = (0, 255, 255)  # Optional: visually mark as habitable
+
+        return planet, system.name
+
+# --- Celestial Body Classes ---
+
+class CelestialBody:
+    def __init__(self, name, body_type, radius, size, color, angle, speed, parent=None, **kwargs):
+        self.name = name
+        self.body_type = body_type
+        self.radius = radius
+        self.size = size
+        self.color = color or (255, 255, 255)
+        self.angle = angle
+        self.speed = speed
+        self.parent = parent  # Another CelestialBody or None
+        self.rect = None  # For mouse collision/highlight
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+    def update_orbit(self, time_delta):
+        self.angle += self.speed * time_delta
+        self.angle %= 2 * math.pi
+
+    def get_position(self):
+        """Return world position relative to system center."""
+        if self.parent is None:
+            return (0, 0)
+        parent_x, parent_y = self.parent.get_position()
+        x = parent_x + math.cos(self.angle) * self.radius
+        y = parent_y + math.sin(self.angle) * self.radius
+        return (x, y)
+
+    def draw(self, screen, camera, parent_pos):
+        world_x, world_y = self.get_position()
+        screen_x, screen_y = camera.apply(world_x, world_y)
+        radius = int(self.size * camera.zoom)
+        pygame.draw.circle(screen, self.color, (int(screen_x), int(screen_y)), radius)
+        # Update rect for mouse collision
+        self.rect = pygame.Rect(
+            int(screen_x - radius),
+            int(screen_y - radius),
+            radius * 2,
+            radius * 2
+        )
+
+class Star(CelestialBody):
+    STAR_COLORS = {
+        "O": (155, 176, 255),
+        "B": (170, 191, 255),
+        "A": (202, 215, 255),
+        "F": (248, 247, 255),
+        "G": (255, 244, 234),
+        "K": (255, 210, 161),
+        "M": (255, 204, 111),
+    }
+    def __init__(self, name, star_type, radius, size, color=None, angle=0, speed=0, parent=None, **kwargs):
+        color = color or self.STAR_COLORS.get(star_type, (255, 255, 255))
+        super().__init__(name, "star", radius, size, color, angle, speed, parent, star_type=star_type, **kwargs)
+        self.star_type = star_type
+
+    def get_position(self):
+        return (0, 0)  # Always at system center
+
+    def draw(self, screen, camera, parent_pos):
+        # Custom star drawing (glow, etc.) can go here
+        world_x, world_y = self.get_position()
+        screen_x, screen_y = camera.apply(world_x, world_y)
+        pygame.draw.circle(screen, self.color, (int(screen_x), int(screen_y)), int(self.size * camera.zoom))
+
+class Planet(CelestialBody):
+    def __init__(self, name, radius, size, color, angle, speed, parent, resources=None, type="rocky", habitable=False, climate=None, colony=None, **kwargs):
+        color = color or ((100, 200, 255) if type == "rocky" else (200, 200, 100))
+        super().__init__(name, "planet", radius, size, color, angle, speed, parent, type=type, **kwargs)
+        self.type = type
+        self.habitable = habitable
+        self.climate = climate
+        self.colony = colony
+        self.resources = resources # Probably a dictionary of resources and their amounts. will create a function for procedural generation of resources later
+
+class Moon(CelestialBody):
+    def __init__(self, name, radius, size, color, angle, speed, parent, **kwargs):
+        super().__init__(name, "moon", radius, size, color, angle, speed, parent, **kwargs)
+
+class Asteroid(CelestialBody):
+    def __init__(self, name, radius, size, color, angle, speed, parent, **kwargs):
+        super().__init__(name, "asteroid", radius, size, color, angle, speed, parent, **kwargs)
+
 

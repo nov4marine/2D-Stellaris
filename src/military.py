@@ -8,6 +8,7 @@ class Military:
         self.military_xp = 0 # will be used similarly to hoi4 army/air/navy xp
         self.modifiers = {}
         self.fleets = [] # List of fleets which will be a class containing ships
+        self.starbases = [] # List of starbases 
         self.ships = [] # List of ships which will be a class containing ship properties
         self.armies = []
         self.expenses = {} # Dictionary to track military expenses by category {"naval wages": 0, "ship maintenance": 0, "army wages": 0, "army maintenance": 0, etc.}
@@ -200,6 +201,7 @@ class Fleet:
         self.destination = None # Destination of the fleet
         self.morale = 100 # Morale of the fleet, which will be an average of the morale of all ships in the fleet
         self.upkeep = {} # Dictionary to track upkeep costs for the fleet
+        self.supply = 0 # Supply of the fleet, which will be a total quantity of supplies available to the fleet
         
     def assign_commander(self, commander):
         # Assign a commander to the fleet
@@ -292,3 +294,12 @@ class CivilianShip(Ship):
         self.upkeep = {}
         self.stats = {}
         self.status = "active"
+
+class Starbase:
+    def __init__(self, name, position, size, status="active"):
+        self.name = name
+        self.position = position  # Position of the starbase in the galaxy
+        self.size = size  # Size of the starbase (e.g., small, medium, large)
+        self.status = status  # Status of the starbase (active, under construction, etc.)
+        self.modules = []  # List of modules installed on the starbase
+        self.upkeep = {}  # Dictionary to track upkeep costs for the starbase

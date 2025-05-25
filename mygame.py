@@ -2,9 +2,7 @@ import sys
 import pygame
 import pygame_gui
 
-from src.gui import SolarSystemGUI, GUIManager, GalaxyGUI
-from src.camera import Camera
-from src.input import MenuInputManager
+from src.input import MenuInputManager, GlobalInputManager
 from src.game_state import game_state
 from src.player_manager import PlayerManager, HumanPlayer, AIPlayer
 
@@ -12,8 +10,6 @@ from src.main_menu import MainMenuUI, NewGameUI
 
 from src.nation import Nation
 
-screen_width = 1920
-screen_height = 1080
 
 class Stellaris_2D:
     """yes, game is a class, just roll with it for better organization?"""
@@ -23,25 +19,25 @@ class Stellaris_2D:
         pygame.init()
 
         #pretend the "selfs" aren't there; it'll be easier to grasp
+        self.screen_width = game_state["screen_width"]
+        self.screen_height = game_state["screen_height"]
         self.clock = pygame.time.Clock()
-        self.screen = pygame.display.set_mode((screen_width, screen_height))
+        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
         pygame.display.set_caption("2D Stellaris")
 
         #this is the lower level GUI manager from pygame_gui module. not my GUI manager. This manager IS REQUIRED to be passed to my GUI manager for ALL UI elements to work.
-        self.pygui_manager = pygame_gui.UIManager((screen_width, screen_height)) 
+        game_state["pygui_manager"] = pygame_gui.UIManager((self.screen_width, self.screen_height))
+        self.pygui_manager = game_state["pygui_manager"]
 
         #instance classes for in-game objects here?
-        self.camera = Camera(screen_width, screen_height)
         self.menu_input_manager = MenuInputManager()
-
-        #render background images
-        self.galaxy_background = pygame.image.load("C:/Users/nov4m/Documents/Python/Stellaris Github/2D-Stellaris/assets/galaxy_background.png").convert()
-        self.solar_system_background = pygame.image.load("C:/Users/nov4m/Documents/Python/Stellaris Github/2D-Stellaris/assets/solar_system_background.png").convert()
-        self.solar_system_background = pygame.transform.scale(self.solar_system_background, (screen_width, screen_height))
-        self.galaxy_background = pygame.transform.scale(self.galaxy_background, (screen_width, screen_height))
 
         self.game_state = game_state
         self.galaxy = None
+
+        self.game_state["global_ui_manager"] = self.pygui_manager
+
+        self.local_player = None  # Add this line
 
     def run_game(self): 
         """this is the game loop for now"""
@@ -77,62 +73,45 @@ class Stellaris_2D:
                 if self.game_state["gameplay_initialized"] == False:
                     self.game_state["gameplay_initialized"] = True
                     self.galaxy = self.game_state["galaxy"]
-                    self.pygui_manager.clear_and_reset()  # Clear the GUI manager for gameplay
-                
-                # eventually each player will run a separate instance of the game loop I think?
+                    # Set the local player
+                    self.local_player = next(
+                        (p for p in self.game_state["player_manager"].players
+                         if isinstance(p, HumanPlayer) and getattr(p, "is_local", True)),
+                        None
+                    )
                 self._input()
                 self._update()
                 self._render()
-                #self._render_gui()
-                #draw the gui elements
-                self.pygui_manager.update(self.time_delta)  # Update the GUI manager
-                self.pygui_manager.draw_ui(self.screen)  # Draw the GUI elements
-            
+                self._render_gui()
+                self.pygui_manager.update(self.time_delta)
+                self.pygui_manager.draw_ui(self.screen)
             pygame.display.flip()  # Update the display
 
             
     def _input(self):
-        """handle and apply input"""
-        for player in self.game_state["player_manager"].players:
-            if isinstance(player, HumanPlayer):
-                player.input_manager.process_input(self.camera, self.galaxy, self.pygui_manager, self.game_state)
-            elif isinstance(player, AIPlayer):
-                # AI input handling logic here
-                pass
+        """Handle and apply input for the local player."""
+        if self.local_player:
+            self.local_player.global_input_manager.process_input()
 
-        
     def _update(self): 
-        """update state of the game/simulation with new input and time that has passed"""
+        """Update the global state of the game/simulation time that has passed"""
         self.galaxy.update_solar_systems(self.time_delta) # ONLY updates orbits of planets
-        self.pygui_manager.update(self.time_delta) # Update the GUI manager
-        self.camera.update_zoom() # Smoothly update the camera zoom
+        self.local_player.global_gui_manager.update_all_modules()
 
     def _render(self):
-        """MY render to screen new stuf function method"""
+        """Render to screen."""
         self.screen.fill((0, 0, 50))
-        if self.game_state["view_mode"] == "galaxy":
-            self.screen.blit(self.galaxy_background, (0, 0))  # Draw the galaxy background
-            self.galaxy.render_galaxy(self.screen, self.camera)
-        elif self.game_state["view_mode"] == "solar_system":
-            self.screen.blit(self.solar_system_background, (0, 0))
-            solar_system = self.game_state["current_solar_system"]
-            if solar_system: #ensure solar systme exists
-                solar_system.render_solarsystem(self.screen, self.camera, self.game_state["selected_star"])
+        self.local_player.camera.update_zoom()
+        view_mode = self.local_player.states.get("view_mode", "galaxy")
+        if view_mode == "galaxy":
+            self.galaxy.render_galaxy(self.screen, self.local_player.camera)
+        elif view_mode == "solar_system":
+            solar_system = self.local_player.states["current_solar_system"].solar_system
+            solar_system.render(self.screen, self.local_player.camera)
 
     def _render_gui(self):
-        """render GUI elements"""
-
-        # Update the core HUD elements with game state information
-        if self.game_state["view_mode"] == "galaxy":
-            self.galaxy_ui.draw()  # Draw the galaxy UI
-        elif self.game_state["view_mode"] == "solar_system":
-            if self.solar_system_gui is None:
-                self.solar_system_gui = SolarSystemGUI(self.pygui_manager, self.game_state["current_solar_system"], self.nation)
-                self.solar_system_gui.draw()  # Draw the solar system UI
-            else:
-                # Update the solar system UI with the current solar system information
-                self.solar_system_gui.star = self.game_state["current_solar_system"]
-                self.solar_system_gui.draw()  # Draw the solar system UI
+        """Render GUI elements for the local human player only."""
+        pass  # Placeholder for GUI rendering logic
 
         
 

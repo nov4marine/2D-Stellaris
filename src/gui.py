@@ -1,11 +1,13 @@
 import pygame_gui
 import pygame
+from src.game_state import game_state
 
-class GUIManager:
-    """global GUI for a given nation"""
-    def __init__(self, manager, nation):
-        self.manager = manager
+class GlobalGUIManager:
+    """global GUI for a given nation that persists across all views"""
+    def __init__(self, player, nation):
+        self.manager = game_state["global_ui_manager"]
         self.nation = nation
+        self.player = player
 
         self.icons = {
             "government": pygame.image.load("2D-Stellaris/assets/icons/government.png").convert_alpha(),
@@ -20,178 +22,197 @@ class GUIManager:
             "market": pygame.image.load("2D-Stellaris/assets/icons/market.png").convert_alpha(),
         }
 
-        # Create the top bar and collapsed panel as modular elements
-        #self.top_bar = TopBar(0, 0, 1920, 50, manager, nation)
-        #self.collapsed_panel = CollapsiblePanel(0, 50, 50, 300, 300, manager)
-        # Add the rest of the gloabal GUI elements for a given nation here 
+        # The GUI shall be split into a collection of organized components:
+        # - Top Bar: Displays important information (e.g., budget, research, etc.)
+        # - Left Collapsed Panel: Contains buttons for various actions (e.g., fleet management, diplomacy, etc.)
+        # - Right Ledger, Stellaris-style: Displays information about star systems, planets, and fleets
 
-    def clear_gui(self):
-        # Hide / reset GUI elements that are exclusive to specific views
-        pass
+        # Global HUD elements always visible
+        self.top_bar = TopBar(0, 0, 1920, 50, self.manager, self.nation, self.icons)
+        self.collapsed_panel = CollapsiblePanel(0, 50, 50, 240, 600, self.manager, self.nation, self.icons) 
+        self.outliner_panel = OutlinerPanel(1680, 50, 240, 900, self.manager, self.nation)
 
-    def initialize_core_hud(self):
-        """This function initializes the core HUD elements that are always present in the game."""
-        # Create the top bar and left collapsed panel as modular elements
-        #self.top_bar = TopBar(0, 0, 1920, 50, self.manager, self.nation)
-        self.collapsed_panel = CollapsiblePanel(0, 50, 50, 300, 300, self.manager)
+        self.planetary_management_window = None
+        self.solar_system_gui = None
+        self.galaxy_gui = None
 
-    
+    def update_all_modules(self):
+        """update all component modules of my GUI manager that handles all GUI for a given nation"""
+        self.top_bar.update()
+        self.outliner_panel.update()
+
+    def handle_all_gui_events(self, event):
+        """handle events for all component modules of my GUI manager that handles all GUI for a given nation"""
+        self.top_bar.handle_event(event)
+        self.collapsed_panel.handle_event(event)
+        self.outliner_panel.process_event(event)
+        # Handle other events as needed
 
 
-    def draw(self):
-        """Draw the GUI elements on the screen."""
-         # Draw the top bar
-        self.collapsed_panel.handle_event(pygame.event.get())  # Handle hover events
+
 
 class TopBar:
-    def __init__(self, x, y, width, height, manager, nation):
+    def __init__(self, x, y, width, height, manager, nation, icons):
         self.panel = pygame_gui.elements.UIPanel(
             relative_rect=pygame.Rect(x, y, width, height),
             starting_height=1,
             manager=manager
         )
-        self.labels = {
-            "bureaucracy": pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect((20, 10), (200, 30)),
-                text=f"Bureaucracy: {nation.bureaucracy}",
-                manager=manager,
-                container=self.panel
-            ),
+        self.manager = manager
+        self.nation = nation
+        self.icons = icons
 
-            "research": pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect((60, 10), (400, 30)),
-                text=f"Research: {nation.research}",
-                manager=manager,
-                container=self.panel
-            ),
+        # Define the stats to display, in order
+        self.stats = [
+            {"name": "gold", "attr": "budget", "icon": icons["budget"], "tooltip": "Total treasury"},
+            {"name": "gdp", "attr": "gdp", "icon": icons["budget"], "tooltip": "Gross Domestic Product"},
+            {"name": "pops", "attr": "population", "icon": icons["population"], "tooltip": "Total population"},
+            {"name": "research", "attr": "research", "icon": icons["tech"], "tooltip": "Research points"},
+            {"name": "bureaucracy", "attr": "bureaucracy", "icon": icons["government"], "tooltip": "Bureaucratic capacity"},
 
-            "budget": pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect((100, 10), (600, 30)),
-                text=f"Budget: {nation.budget}",
-                manager=manager,
-                container=self.panel
-            ),
+            #gonna comment out the ones that are not implemented yet
+            #{"name": "executive_authority", "attr": "executive_authority", "icon": icons["authority"], "tooltip": "Executive authority"},
+            #{"name": "legitimacy", "attr": "legitimacy", "icon": icons["legitimacy"], "tooltip": "Legitimacy"},
+            #diplo points/ influence? 
 
-            "gdp": pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect((140, 10), (800, 30)),
-                text=f"GDP: {nation.gdp}",
-                manager=manager,
-                container=self.panel
-            ),
+            # Add more as needed
+        ]
 
-            "population": pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect((180, 10), (1000, 30)),
-                text=f"Population: {nation.population}",
-                manager=manager,
-                container=self.panel
-            ),
+        self.elements = []
+        x_pos = 10
+        icon_size = 32
+        spacing = 20
+        label_width = 120
 
-            "gdp per capita": pygame_gui.elements.UILabel(
-                relative_rect=pygame.Rect((220, 10), (1200, 30)),
-                text=f"GDP per Capita: {nation.gdp_percapita}",
-                manager=manager,
-                container=self.panel
-            ),
-
-            "budget bar": pygame_gui.elements.UIProgressBar(
-                relative_rect=pygame.Rect((1690, 10), (200, 30)),
+        for stat in self.stats:
+            # Icon
+            icon_elem = pygame_gui.elements.UIImage(
+                relative_rect=pygame.Rect(x_pos, (height - icon_size)//2, icon_size, icon_size),
+                image_surface=stat["icon"],
                 manager=manager,
                 container=self.panel
             )
+            # Label
+            value = getattr(nation, stat["attr"], "N/A") if nation else "N/A"
+            button_elem = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect(x_pos + icon_size + 5, (height - 30)//2, label_width, 30),
+                text=str(value),
+                manager=manager,
+                container=self.panel
+            )
+            button_elem.set_tooltip(stat["tooltip"])
 
-            # Add other labels here (research, budget, GDP)
-        }
+            self.elements.append((icon_elem, button_elem))
+            x_pos += icon_size + label_width + spacing
 
-    def update(self, nation):
-        self.labels["bureaucracy"].set_text(f"Bureaucracy: {nation.bureaucracy}")
-        # Repeat for other labels
-
-class Panel:
-    def __init__(self, x, y, width, height, manager):
-        # Pygame GUI element as an attribute
-        self.panel = pygame_gui.elements.UIPanel(
-            relative_rect=pygame.Rect((x, y), (width, height)),
-            starting_height=1,
-            manager=manager
-        )
-        self.children = []  # List of child elements within the panel
-
-    def add_child(self, child):
-        self.children.append(child)
-
-    def draw_children(self):
-        # You can loop through children to manage rendering or updates
-        for child in self.children:
-            if isinstance(child, Button):  # Example specific to buttons
-                child.set_text("Updated!")
-
-class Button:
-    def __init__(self, x, y, width, height, text, manager, action=None):
-        self.button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect((x, y), (width, height)),
-            text=text,
-            manager=manager
-        )
-        self.action = action  # Function to call on click
-
+    def update(self):
+        # Update the label values each frame
+        for (icon_elem, button_elem), stat in zip(self.elements, self.stats):
+            value = getattr(self.nation, stat["attr"], "N/A") if self.nation else "N/A"
+            button_elem.set_text(str(value))
+    
     def handle_event(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if self.button.get_relative_rect().collidepoint(event.pos):
-                if self.action:
-                    self.action()
+        # Handle events for the top bar
+        if event.type == pygame_gui.UI_BUTTON_PRESSED:
+            for icon_elem, button_elem in self.elements:
+                if event.ui_element == button_elem:
+                    # Handle button click (e.g., open a detailed view)
+                    print(f"Clicked on {button_elem.get_text()}")
+
+        # Handle other events as needed
 
 class CollapsiblePanel:
-    def __init__(self, x, y, collapsed_width, expanded_width, height, manager):
-        self.collapsed_rect = pygame.Rect((x, y), (collapsed_width, height))
-        self.expanded_rect = pygame.Rect((x, y), (expanded_width, height))
+    def __init__(self, x, y, collapsed_width, expanded_width, height, manager, nation, icons):
+        self.collapsed_rect = pygame.Rect(x, y, collapsed_width, height)
+        self.expanded_rect = pygame.Rect(x, y, expanded_width, height)
         self.panel = pygame_gui.elements.UIPanel(
             relative_rect=self.collapsed_rect,
             starting_height=1,
             manager=manager
         )
         self.expanded = False
+        self.manager = manager
+        self.nation = nation
+        self.icons = icons
+
+        self.buttons = [
+            {"name": "Situation Log", "icon": "situation_log", "tooltip": "View situation log"},
+            {"name": "Government", "icon": "government", "tooltip": "View government"},
+            {"name": "Budget", "icon": "budget", "tooltip": "View budget"},
+            {"name": "Population", "icon": "population", "tooltip": "View population"},
+            {"name": "Buildings", "icon": "buildings", "tooltip": "View buildings"},
+            {"name": "Society", "icon": "society", "tooltip": "View society"},
+            {"name": "Technology", "icon": "tech", "tooltip": "View technology"},
+            {"name": "Leaders", "icon": "leaders", "tooltip": "View leaders"},
+            {"name": "Species", "icon": "species", "tooltip": "View species"},
+            {"name": "Planets and Sectors", "icon": "planets", "tooltip": "View planets and sectors"},
+            {"name": "Expansion Planner", "icon": "expansion", "tooltip": "View expansion planner"},
+            {"name": "Fleet Management", "icon": "fleet_management", "tooltip": "Manage fleets"},
+            {"name": "Diplomacy", "icon": "diplomacy", "tooltip": "View diplomacy"},
+            {"name": "Market", "icon": "market", "tooltip": "View market"},
+            {"name": "Claims", "icon": "claims", "tooltip": "View claims"},
+            {"name": "Discoveries", "icon": "discoveries", "tooltip": "View discoveries"},
+        ]
+
+        self.elements = []
+        x_pos = 10
+        y_pos = 10
+        icon_size = 32
+        spacing = 10
+        label_width = expanded_width - (icon_size + 30)
+
+        for button in self.buttons:
+            # Use placeholder if icon is missing
+            icon_surface = self.icons.get(button["icon"], self.icons["government"])
+            icon_elem = pygame_gui.elements.UIImage(
+                relative_rect=pygame.Rect(x_pos, y_pos, icon_size, icon_size),
+                image_surface=icon_surface,
+                manager=manager,
+                container=self.panel
+            )
+            button_elem = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect(x_pos + icon_size + 8, y_pos, label_width, icon_size),
+                text=button["name"],
+                manager=manager,
+                container=self.panel
+            )
+            button_elem.set_tooltip(button["tooltip"])
+            self.elements.append((icon_elem, button_elem))
+            y_pos += icon_size + spacing
 
     def toggle(self, hover):
         if hover and not self.expanded:
             self.panel.set_dimensions(self.expanded_rect.size)
+            for icon_elem, button_elem in self.elements:
+                button_elem.show()
             self.expanded = True
         elif not hover and self.expanded:
             self.panel.set_dimensions(self.collapsed_rect.size)
+            for icon_elem, button_elem in self.elements:
+                button_elem.hide()
             self.expanded = False
 
     def handle_event(self, event):
         mouse_pos = pygame.mouse.get_pos()
-        hover = self.collapsed_rect.collidepoint(mouse_pos)
+        hover = True if self.collapsed_rect.collidepoint(mouse_pos) or self.expanded_rect.collidepoint(mouse_pos) else False
         self.toggle(hover)
 
-class Icon:
-    def __init__(self, filepath, x, y, width, height, manager, container=None):
-        self.icon = pygame_gui.elements.UIImage(
-            relative_rect=pygame.Rect((x, y), (width, height)),
-            image_surface=pygame.image.load(filepath).convert_alpha(),
-            manager=manager,
-            container=container
-        )
-
-
 class SolarSystemGUI:
-    def __init__(self, manager, star, nation=None):
-        """Initialize the Solar System GUI with a given solar system and nation."""
-        self.manager = manager
-        self.star = star  # the particular star system to be displayed
+    def __init__(self, nation=None):
+        self.manager = game_state["global_ui_manager"]
+        self.solar_system = None
         self.nation = nation
 
+        # Static GUI elements
         self.star_label = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect((810, 1030), (300, 50)),
-            text=f"Solar System: {self.star.star_name}",
+            text="",
             manager=self.manager
         )
 
-        self.return_button = Button(
-            x=10, y=10, width=140, height=40,
-            text="Return to Galaxy",
-            manager=self.manager,
-        )
+    def set_solar_system(self, solar_system):
+        self.solar_system = solar_system
+        self.star_label.set_text(f"Solar System: {solar_system.name}")
 
     def update(self, events):
         for event in events:
@@ -199,7 +220,7 @@ class SolarSystemGUI:
             pass
 
     def draw(self):
-        # Handle any custom drawing or updates for solar system GUI
+        # Use self.solar_system as needed
         pass
 
 class GalaxyGUI:
@@ -288,3 +309,273 @@ class ButtonGrid:
                 })
 
         return self.buttons
+
+class OutlinerPanel:
+    def __init__(self, x, y, width, height, manager, nation):
+        self.manager = manager
+        self.nation = nation
+
+        # Main scrollable container
+        self.scroll_container = pygame_gui.elements.UIScrollingContainer(
+            relative_rect=pygame.Rect(x, y, width, height),
+            manager=manager
+        )
+
+        # Background panel for headers/buttons
+        self.background_panel = pygame_gui.elements.UIPanel(
+            relative_rect=pygame.Rect(0, 0, width, height),
+            starting_height=0,
+            manager=manager,
+            container=self.scroll_container
+        )
+
+        self.sections = {
+            "Planets": [],
+            "Military Fleets": [],
+            "Civilian Fleets": [],
+            "Starbases": [],
+            "Projects": [],
+        }
+        self.section_states = {key: True for key in self.sections}  # True = expanded
+
+        self.section_headers = {}
+        self.section_buttons = {}
+
+        section_y = 10
+        section_spacing = 10
+        header_height = 28
+        item_height = 28
+        item_spacing = 2
+        panel_width = width - 20
+
+        for section in self.sections:
+            # Section header button (collapsible)
+            header_btn = pygame_gui.elements.UIButton(
+                relative_rect=pygame.Rect(10, section_y, panel_width, header_height),
+                text=f"▼ {section}",
+                manager=manager,
+                container=self.background_panel
+            )
+            self.section_headers[section] = header_btn
+            self.section_buttons[section] = []
+            section_y += header_height + 2
+
+            # Add item buttons (initially visible)
+            items = getattr(nation, section.lower().replace(" ", "_"), [])
+            for item in items:
+                btn = pygame_gui.elements.UIButton(
+                    relative_rect=pygame.Rect(20, section_y, panel_width - 10, item_height),
+                    text=getattr(item, "name", str(item)),
+                    manager=manager,
+                    container=self.background_panel
+                )
+                self.section_buttons[section].append(btn)
+                section_y += item_height + item_spacing
+
+            section_y += section_spacing
+
+        self._reflow()
+
+    def _reflow(self):
+        """Update positions and visibility of all elements based on collapsed state."""
+        section_y = 10
+        header_height = 28
+        item_height = 28
+        item_spacing = 2
+        panel_width = self.background_panel.get_relative_rect().width - 20
+
+        for section, header_btn in self.section_headers.items():
+            # Move header
+            header_btn.set_relative_position((10, section_y))
+            # Update arrow
+            expanded = self.section_states[section]
+            header_btn.set_text(("▼ " if expanded else "► ") + section)
+            section_y += header_height + 2
+
+            # Move/hide item buttons
+            for btn in self.section_buttons[section]:
+                if expanded:
+                    btn.show()
+                    btn.set_relative_position((20, section_y))
+                    section_y += item_height + item_spacing
+                else:
+                    btn.hide()
+            section_y += 10  # section spacing
+
+    def process_event(self, event):
+        # Handle section header clicks for collapsing/expanding
+        if event.type == pygame_gui.UI_BUTTON_PRESSED:
+            for section, header_btn in self.section_headers.items():
+                if event.ui_element == header_btn:
+                    self.section_states[section] = not self.section_states[section]
+                    self._reflow()
+                    return True
+                # ...handle item button clicks...
+        return False
+
+    def update(self):
+        # Remove old buttons from the UI
+        for section in self.section_buttons:
+            for btn in self.section_buttons[section]:
+                btn.kill()
+        self.section_buttons = {key: [] for key in self.sections}
+
+        section_y = 10
+        header_height = 28
+        item_height = 28
+        item_spacing = 2
+        section_spacing = 10
+        panel_width = self.background_panel.get_relative_rect().width - 20
+
+        for section in self.sections:
+            section_y += header_height + 2
+            items = getattr(self.nation, section.lower().replace(" ", "_"), [])
+            for item in items:
+                btn = pygame_gui.elements.UIButton(
+                    relative_rect=pygame.Rect(20, section_y, panel_width - 10, item_height),
+                    text=getattr(item, "name", str(item)),
+                    manager=self.manager,
+                    container=self.background_panel
+                )
+                self.section_buttons[section].append(btn)
+                section_y += item_height + item_spacing
+            section_y += section_spacing
+
+        self._reflow()
+
+
+class PlanetaryManagementWindow:
+    """Big window for managing a colony"""
+    def __init__(self, manager, colony):
+        self.manager = manager
+        self.colony = colony
+        self.window = pygame_gui.elements.UIWindow(
+            rect=pygame.Rect((400, 100), (900, 800)),
+            manager=manager,
+            window_display_title=f"Planetary Management: {colony.name}",
+            object_id="#planetary_management_window"
+        )
+
+        # Tabs (Overview, Pops, Buildings, Construction)
+        self.tabs = pygame_gui.elements.UITabBar(
+            relative_rect=pygame.Rect((0, 0), (900, 40)),
+            manager=manager,
+            container=self.window
+        )
+        self.tab_panels = {}
+        for tab_name in ["Overview", "Pops", "Buildings", "Construction"]:
+            panel = pygame_gui.elements.UIPanel(
+                relative_rect=pygame.Rect((0, 40), (900, 760)),
+                starting_height=1,
+                manager=manager,
+                container=self.window,
+                visible=(tab_name == "Overview")
+            )
+            self.tab_panels[tab_name] = panel
+
+        # --- Overview Tab ---
+        overview_panel = self.tab_panels["Overview"]
+        pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((20, 20), (400, 30)),
+            text=f"Planet: {colony.name} ({colony.type})",
+            manager=manager,
+            container=overview_panel
+        )
+        pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((20, 60), (400, 30)),
+            text=f"Habitability: {colony.habitability}%",
+            manager=manager,
+            container=overview_panel
+        )
+        pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((20, 100), (400, 30)),
+            text=f"Owner: {colony.owner}",
+            manager=manager,
+            container=overview_panel
+        )
+        pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((20, 140), (400, 30)),
+            text=f"GDP: {colony.gdp}",
+            manager=manager,
+            container=overview_panel
+        )
+        pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((20, 180), (400, 30)),
+            text=f"Unrest: {colony.unrest}",
+            manager=manager,
+            container=overview_panel
+        )
+        # Add more stats as needed
+
+        # --- Pops Tab ---
+        pops_panel = self.tab_panels["Pops"]
+        pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((20, 10), (200, 30)),
+            text="Population (Pops):",
+            manager=manager,
+            container=pops_panel
+        )
+        y = 50
+        for pop in colony.colony_pops:
+            pygame_gui.elements.UILabel(
+                relative_rect=pygame.Rect((20, y), (800, 28)),
+                text=f"{pop.pop_type} | Size: {pop.size} | Profession: {getattr(pop.profession, 'profession', 'Unemployed')} | Income: {pop.income} | Happiness: {pop.happiness}",
+                manager=manager,
+                container=pops_panel
+            )
+            y += 32
+
+        # --- Buildings Tab ---
+        buildings_panel = self.tab_panels["Buildings"]
+        pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((20, 10), (200, 30)),
+            text="Buildings:",
+            manager=manager,
+            container=buildings_panel
+        )
+        y = 50
+        for building in colony.colony_buildings:
+            pygame_gui.elements.UILabel(
+                relative_rect=pygame.Rect((20, y), (800, 28)),
+                text=f"{building.name} (Lvl {building.levels}) | Jobs: {', '.join([job.profession for job in building.jobs])} | Input: {building.input_goods} | Output: {building.output_goods}",
+                manager=manager,
+                container=buildings_panel
+            )
+            y += 32
+
+        # --- Construction Tab ---
+        construction_panel = self.tab_panels["Construction"]
+        pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect((20, 10), (200, 30)),
+            text="Construction Queue:",
+            manager=manager,
+            container=construction_panel
+        )
+        y = 50
+        for item in colony.construction_queue:
+            pygame_gui.elements.UILabel(
+                relative_rect=pygame.Rect((20, y), (800, 28)),
+                text=f"{item['building'].name} | Remaining Cost: {item['remaining_cost']} | Time: {item['remaining_time']}",
+                manager=manager,
+                container=construction_panel
+            )
+            y += 32
+
+        # --- Tab Switching Logic ---
+        self.tabs.select_tab("Overview")
+        self.tabs.set_tabs(["Overview", "Pops", "Buildings", "Construction"])
+        self.tabs.set_active_tab("Overview")
+        self.tabs.set_tab_visibility("Overview", True)
+        self.tabs.set_tab_visibility("Pops", True)
+        self.tabs.set_tab_visibility("Buildings", True)
+        self.tabs.set_tab_visibility("Construction", True)
+
+        # You may need to implement tab switching logic using handle_event
+
+    def handle_event(self, event):
+        # Implement tab switching and close logic here
+        pass
+
+    def update(self):
+        # Refresh data if colony changes
+        pass

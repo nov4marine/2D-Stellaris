@@ -1,33 +1,68 @@
 # src/galaxy.py
 import scipy.spatial
 import networkx as nx
-
 import pygame
 import random
 import math
 from src.solar_system import SolarSystem
+from src.game_state import game_state
+
+class GalaxyStar:
+    """
+    Represents a star on the galaxy map.
+    Holds galaxy coordinates, color, radius, and a reference to its SolarSystem.
+    """
+    def __init__(self, name, x, y, radius, color, solar_system=None):
+        self.name = name
+        self.x = x  # Galaxy map X
+        self.y = y  # Galaxy map Y
+        self.radius = radius
+        self.color = color
+        self.solar_system = solar_system  # Reference to SolarSystem object
+        self.rect = None  # For mouse collision/highlight
+        self.selected = False  # For UI selection, etc.
+
+    def get_position(self):
+        return (self.x, self.y)
 
 class Galaxy:
     def __init__(self, galaxy_size=8000, num_stars=1000):
-        self.galaxy_size = galaxy_size #more like the size or radius of the galaxy map, not the actual size of the galaxy
-        self.num_stars = num_stars #number of stars in the galaxy
-        self.stars = self._generate_stars(num_stars, galaxy_size)
-        self.solar_systems = self._generate_solar_systems()
-        #self.hyperlanes = self.generate_delaunay_hyperlanes()  # or self._generate_voronoi_hyperlanes()
-        #self.hyperlanes = self.generate_voronoi_hyperlanes()  # Uncomment to use Voronoi hyperlanes
-        self.hyperlanes = self.generate_prim_hyperlanes()  # Uncomment to use Prim's hyperlanes
+        self.galaxy_size = galaxy_size
+        self.num_stars = num_stars
+        self.galaxy_background = None
 
-    def _generate_stars(self, num_stars, galaxy_size):
-        """Generate stars with random positions and attributes in a galaxy shape."""
-        star_colors = [(255, 255, 0), (255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 255)]
+        # Step 1: Generate star positions and attributes (galaxy map only)
+        self.galaxy_stars = self._generate_galaxy_stars(num_stars, galaxy_size)
+
+        # Pre-render the galactic disk surface
+        self._render_disk()
+
+        # Pre-render star bloom effects
+        self._render_star_bloom()
+
+        # Step 2: Generate solar systems and link to stars
+        self.solar_systems = self._generate_solar_systems()
+
+        # Step 3: Link GalaxyStar objects to their SolarSystem
+        for star in self.galaxy_stars:
+            star.solar_system = self.solar_systems[star.name]
+
+        # Step 4: Generate hyperlanes
+        self.hyperlanes = self.generate_prim_hyperlanes()
+
+    def _generate_galaxy_stars(self, num_stars, galaxy_size):
+        star_colors = [
+            (255, 255, 0), (255, 0, 0), (0, 255, 0),
+            (0, 0, 255), (255, 255, 255)
+        ]
         stars = []
 
-        num_arms = 4  # Number of spiral arms
-        arm_tightness = 2  # Controls arm winding
-        arm_spread = 0.03  # Spread around arms
-        center_radius = galaxy_size * 0.1  # Minimum radius for the empty core
-        overall_rotation = math.pi / 4  # Rotate the entire galaxy
-        min_distance = 100  # Minimum distance between stars
+        num_arms = 4
+        arm_tightness = 3  # Lower = looser, higher = tighter spiral
+        arm_spread = 0.25    # Lower = thinner arms, higher = fuzzier arms
+        center_radius = galaxy_size * 0.1
+        overall_rotation = math.pi / 4
+        min_distance = 100
 
         for i in range(num_stars):
             while True:
@@ -37,17 +72,18 @@ class Galaxy:
                 # Angle for the spiral arms
                 arm_index = i % num_arms
                 arm_angle = arm_index * (2 * math.pi / num_arms)
+                # Add a small random offset to theta for spread
+                theta_offset = random.gauss(0, arm_spread)
+                theta = overall_rotation + arm_angle + arm_tightness * math.log(r + 1) + theta_offset
 
-                theta = overall_rotation + arm_angle + arm_tightness * r
-
-                # Convert polar to Cartesian with tighter spread
-                x = r * math.cos(theta) + random.uniform(-arm_spread * r * 0.5, arm_spread * r * 0.5)
-                y = r * math.sin(theta) + random.uniform(-arm_spread * r * 0.5, arm_spread * r * 0.5)
+                # Convert polar to Cartesian
+                x = r * math.cos(theta)
+                y = r * math.sin(theta)
 
                 # Check minimum distance to other stars
                 too_close = False
                 for star in stars:
-                    distance = math.sqrt((x - star['x']) ** 2 + (y - star['y']) ** 2)
+                    distance = math.sqrt((x - star.x) ** 2 + (y - star.y) ** 2)
                     if distance < min_distance:
                         too_close = True
                         break
@@ -61,57 +97,115 @@ class Galaxy:
             color = random.choice(star_colors)
             name = f"star {i + 1}"
 
-            # Create a dictionary for the star's attributes
-            stars.append({
-                "name": name,
-                "x": x,
-                "y": y,
-                "radius": radius,
-                "color": color,
-            })
-
+            stars.append(GalaxyStar(
+                name=name,
+                x=x,
+                y=y,
+                radius=radius,
+                color=color
+            ))
         return stars
-    
+
     def _generate_solar_systems(self):
-        """simulate a solar system instance for each star in the galaxy"""
+        """
+        Create a SolarSystem for each GalaxyStar.
+        The SolarSystem does NOT need to know its galaxy coordinates.
+        """
         solar_systems = {}
-        for star in self.stars:
-            #use the star's name as the key and instance a solar system
-            solar_systems[star["name"]] = SolarSystem(star_name=star["name"], star_type="main sequence")
+        for star in self.galaxy_stars:
+            # Only pass name and any system-specific args.
+            solar_system = SolarSystem(
+                name=star.name
+                # You can add owner or other args if needed
+            )
+            solar_systems[star.name] = solar_system
         return solar_systems
     
-    def update_solar_systems(self, time_delta):
-        """update solar systems"""
-        for solar_system in self.solar_systems.values():
-            solar_system.update(time_delta)
+    def _render_disk(self):
+        """pre render the galactic disk surface"""
+        self.disk_image = pygame.image.load(
+            "2D-Stellaris/assets/M51.png"
+        ).convert_alpha()
+        self.disk_image = pygame.transform.scale(
+            self.disk_image, (self.galaxy_size * 2, self.galaxy_size * 2)
+        )
+        
     
-    def render_galaxy(self, screen, camera):
-        """render the galaxy"""
-        for star in self.stars:
-            #convert world coordinates to screen coordinates using the camera
-            screen_x, screen_y = camera.apply(star["x"], star["y"])
-            #draw star as a circle
-            pygame.draw.circle(screen, star["color"], (int(screen_x), int(screen_y)), int(star["radius"] * camera.zoom))
-            # Dynamically update the star's rect for collision detection
-            star["rect"] = pygame.Rect(
-                int(screen_x - star["radius"] * camera.zoom),
-                int(screen_y - star["radius"] * camera.zoom),
-                int(star["radius"] * 2 * camera.zoom),
-                int(star["radius"] * 2 * camera.zoom)
-            )
-        
-        #Draw faint hyperlanes between connected stars.
-        for line in self.hyperlanes:
-            start_x, start_y = camera.apply(line[0][0], line[0][1])
-            end_x, end_y = camera.apply(line[1][0], line[1][1])
-            pygame.draw.line(screen, (255, 255, 255, 50), (start_x, start_y), (end_x, end_y), 1)
+    def _render_star_bloom(self):
+        """pre render blurred glow surfaces for each star"""
+        self.star_bloom = {}
+        for radius in range(10, 40):
+            size = radius * 8 # radius of the surface upon which the bloom is drawn, not radius of the bloom
+            # Create a surface with a transparent background
+            surface = pygame.Surface((size, size), pygame.SRCALPHA)
+            pygame.draw.circle(surface, (255, 255, 255, 100), (size // 2, size // 2), radius * 3)
+            bloom = pygame.transform.gaussian_blur(surface, 10)
+            self.star_bloom[radius] = bloom
 
-    def generate_delaunay_hyperlanes(self,max_connections=3):
-        """Creates a structured, connected hyperlane network using a hybrid approach."""
-        points = [(star["x"], star["y"]) for star in self.stars]
+    def update_solar_systems(self, time_delta):
+        for system in self.solar_systems.values():
+            system.update(time_delta)
+
+    def render_galaxy(self, screen, camera):
+        # Draw the background
+        if self.galaxy_background is None:
+            self.galaxy_background = pygame.image.load(
+                "C:/Users/nov4m/Documents/Python/Stellaris Github/2D-Stellaris/assets/galaxy_background.png"
+            ).convert()
+            self.galaxy_background = pygame.transform.scale(
+                self.galaxy_background,
+                (game_state["screen_width"], game_state["screen_height"])
+            )
+        screen.blit(self.galaxy_background, (0, 0))
+
+        # --- Galactic Disk ---
+        # Center the disk at (0, 0) in world coordinates
+        disk_center_screen = camera.apply(0, 0)
+        disk_width = int(self.disk_image.get_width() * camera.zoom)
+        disk_height = int(self.disk_image.get_height() * camera.zoom)
+        scaled_disk = pygame.transform.smoothscale(self.disk_image, (disk_width, disk_height))
+        disk_rect = scaled_disk.get_rect(center=(int(disk_center_screen[0]), int(disk_center_screen[1])))
+        screen.blit(scaled_disk, disk_rect)
+
+        # --- Bloom Layer ---
+        for star in self.galaxy_stars:
+            screen_x, screen_y = camera.apply(star.x, star.y)
+            # Pick the closest pre-rendered glow by star.radius
+            base_radius = min(self.star_bloom.keys(), key=lambda r: abs(r - int(star.radius)))
+            glow = self.star_bloom[base_radius]
+            # Optionally scale for zoom
+            scale = star.radius * camera.zoom / base_radius
+            if scale != 1.0:
+                glow = pygame.transform.smoothscale(glow, (int(glow.get_width() * scale), int(glow.get_height() * scale)))
+            # Center the glow
+            rect = glow.get_rect(center=(int(screen_x), int(screen_y)))
+            screen.blit(glow, rect)
+
+        # --- HYPERLANES ---
+        for line in self.hyperlanes:
+            start, end = line
+            start_x, start_y = camera.apply(start.x, start.y)
+            end_x, end_y = camera.apply(end.x, end.y)
+            pygame.draw.line(screen, (120, 180, 225), (start_x, start_y), (end_x, end_y), 1)
+
+        # --- STARS ---
+        for star in self.galaxy_stars:
+            screen_x, screen_y = camera.apply(star.x, star.y)
+            # Twinkle
+            twinkle = 0.8 + 0.2 * math.sin(pygame.time.get_ticks() / 500 + hash(star.name) % 100)
+            radius = int(star.radius * camera.zoom * twinkle)
+            pygame.draw.circle(screen, star.color, (int(screen_x), int(screen_y)), radius)
+            # Update rect for collision
+            star.rect = pygame.Rect(
+                int(screen_x - star.radius * camera.zoom),
+                int(screen_y - star.radius * camera.zoom),
+                int(star.radius * 2 * camera.zoom),
+                int(star.radius * 2 * camera.zoom)
+            )
+
+    def generate_delaunay_hyperlanes(self, max_connections=3):
+        points = [(star.x, star.y) for star in self.galaxy_stars]
         tri = scipy.spatial.Delaunay(points)
-        
-        # Step 1: Build a graph from Delaunay edges
         G = nx.Graph()
         star_connections = {point: [] for point in points}
 
@@ -120,13 +214,9 @@ class Galaxy:
                 start = points[simplex[i]]
                 end = points[simplex[(i + 1) % 3]]
                 distance = math.sqrt((start[0] - end[0])**2 + (start[1] - end[1])**2)
-
                 G.add_edge(start, end, weight=distance)
 
-        # Step 2: Use Minimum Spanning Tree (MST) to ensure global connectivity
         mst_edges = list(nx.minimum_spanning_edges(G, algorithm="kruskal", data=False))
-        
-        # Step 3: Select only a limited number of Delaunay connections per star
         for start, end in mst_edges:
             star_connections[start].append(end)
             star_connections[end].append(start)
@@ -135,60 +225,49 @@ class Galaxy:
             for i in range(3):
                 start = points[simplex[i]]
                 end = points[simplex[(i + 1) % 3]]
-
                 if len(star_connections[start]) < max_connections and len(star_connections[end]) < max_connections:
                     star_connections[start].append(end)
                     star_connections[end].append(start)
 
-        # Convert dictionary to hyperlane list
-        hyperlanes = [(start, end) for start in star_connections for end in star_connections[start]]
+        # Convert to GalaxyStar objects
+        pos_to_star = {(star.x, star.y): star for star in self.galaxy_stars}
+        hyperlanes = []
+        for start in star_connections:
+            for end in star_connections[start]:
+                hyperlanes.append((pos_to_star[start], pos_to_star[end]))
         return hyperlanes
 
     def generate_prim_hyperlanes(self):
-        """Generates a Minimum Spanning Tree (MST) hyperlane network using Prim's Algorithm."""
-        
-        points = [(star["x"], star["y"]) for star in self.stars]
+        points = [(star.x, star.y) for star in self.galaxy_stars]
         G = nx.Graph()
-
-        # ✅ Step 1: Create a fully connected graph with weighted edges
         for i, start in enumerate(points):
             for j, end in enumerate(points):
                 if i == j:
-                    continue  # Skip self-connections
-                
+                    continue
                 distance = math.sqrt((start[0] - end[0])**2 + (start[1] - end[1])**2)
                 G.add_edge(start, end, weight=distance)
-
-        # ✅ Step 2: Compute MST using Prim’s Algorithm
         mst = nx.minimum_spanning_tree(G, algorithm="prim", weight="weight")
-
-        # ✅ Step 3: Extract hyperlane edges from the MST
-        hyperlanes = list(mst.edges)
-
+        pos_to_star = {(star.x, star.y): star for star in self.galaxy_stars}
+        hyperlanes = []
+        for start, end in mst.edges:
+            hyperlanes.append((pos_to_star[start], pos_to_star[end]))
         return hyperlanes
 
     def generate_voronoi_hyperlanes(self):
-        """Creates hyperlanes based on Voronoi adjacency."""
-        points = [(star["x"], star["y"]) for star in self.stars]
+        points = [(star.x, star.y) for star in self.galaxy_stars]
         vor = scipy.spatial.Voronoi(points)
-        
         hyperlanes = []
-        
-        # Each ridge represents a connection between two Voronoi cells
         for ridge in vor.ridge_vertices:
-            if -1 in ridge:  # Ignore edges extending beyond the map
+            if -1 in ridge:
                 continue
-            
             start = vor.vertices[ridge[0]]
             end = vor.vertices[ridge[1]]
             hyperlanes.append((start, end))
-        
         return hyperlanes
 
-    def get_solar_systems(self, star_name):
-        #access each one from the dictionary of stars
+    def get_solar_system(self, star_name):
         return self.solar_systems.get(star_name)
 
-    def update(self, time_delta): 
-        #add logic for backgound events or anything that isn't pefectly static, such as sovereignty map
-        pass
+    def update(self, time_delta):
+        # Add logic for background events, sovereignty, etc.
+        self.update_solar_systems(time_delta)

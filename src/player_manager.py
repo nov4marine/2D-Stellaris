@@ -2,10 +2,11 @@
 # Will also end up hosting all initial development for the AI player, and may need to be split into multiple files later.
 
 
-from src.gui import GUIManager
+from src.gui import *
 from src.nation import Nation
 from src.game_state import game_state
-from src.input import GameplayInputManager
+from src.input import GlobalInputManager
+from src.camera import Camera
 
 class Player:
     def __init__(self, name, nation=None, gui_manager=None, input_manager=None):
@@ -15,15 +16,23 @@ class Player:
         self.input_manager = input_manager
 
     def issue_command(self, action, parameters=None):
-        """always override this method in subclasses to handle commands"""
         raise NotImplementedError("this method MUST be overriden by subclasses or else you will have PROBLEMS.")
-    
+
 class HumanPlayer(Player):
-    def __init__(self, name, nation=None, gui_manager=None, input_manager=None):
-        super().__init__(name, nation, gui_manager, input_manager)
-        self.gui_manager = gui_manager
-        self.input_manager = input_manager
-        self.nation = nation
+    def __init__(self, name, nation=None, is_local=False):
+        super().__init__(name, nation)
+        self.is_local = is_local
+        self.states = {
+            "view_mode": "galaxy",
+            "current_solar_system": None,
+        }
+        self.camera = Camera(game_state["screen_width"], game_state["screen_height"])
+        self.global_gui_manager = None
+        self.global_input_manager = None
+        self.gui_managers = {}
+
+    def get_active_gui_manager(self):
+        return self.gui_managers[self.view_state["view_mode"]]
 
     def issue_command(self, action, parameters=None):
         action.execute()
@@ -60,11 +69,16 @@ class PlayerManager:
             self.nation_assignments.pop(player, None)
             print(f"{player.name} has been removed")
 
-    def assign_nation(self, player, nation, gui_manager):
+    def assign_nation(self, player, nation):
         self.nation_assignments[player] = nation
         player.nation = nation
-        player.gui_manager = GUIManager(nation, gui_manager)
-        player.input_manager = GameplayInputManager(player.nation)
+        player.global_gui_manager = GlobalGUIManager(player, nation)
+        player.global_input_manager = GlobalInputManager(player, nation)
+        player.gui_managers = {
+            "galaxy": GalaxyGUI(nation),
+            "solar_system": SolarSystemGUI(nation),
+        }
+
         print(f"{player.name} has been assigned to {nation.name}!")
 
     def update_ai_players(self, time_delta):
