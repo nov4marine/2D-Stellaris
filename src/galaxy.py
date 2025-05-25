@@ -129,7 +129,7 @@ class Galaxy:
         self.disk_image = pygame.transform.scale(
             self.disk_image, (self.galaxy_size * 2, self.galaxy_size * 2)
         )
-        
+
     
     def _render_star_bloom(self):
         """pre render blurred glow surfaces for each star"""
@@ -163,7 +163,7 @@ class Galaxy:
         disk_center_screen = camera.apply(0, 0)
         disk_width = int(self.disk_image.get_width() * camera.zoom)
         disk_height = int(self.disk_image.get_height() * camera.zoom)
-        scaled_disk = pygame.transform.smoothscale(self.disk_image, (disk_width, disk_height))
+        scaled_disk = pygame.transform.scale(self.disk_image, (disk_width, disk_height))
         disk_rect = scaled_disk.get_rect(center=(int(disk_center_screen[0]), int(disk_center_screen[1])))
         screen.blit(scaled_disk, disk_rect)
 
