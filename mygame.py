@@ -10,6 +10,9 @@ from src.main_menu import MainMenuUI, NewGameUI
 
 from src.nation import Nation
 
+import cProfile
+import pstats
+
 
 class Stellaris_2D:
     """yes, game is a class, just roll with it for better organization?"""
@@ -101,7 +104,7 @@ class Stellaris_2D:
     def _render(self):
         """Render to screen."""
         self.screen.fill((0, 0, 50))
-        self.local_player.camera.update_zoom()
+        #self.local_player.camera.set_zoom()
         view_mode = self.local_player.states.get("view_mode", "galaxy")
         if view_mode == "galaxy":
             self.galaxy.render_galaxy(self.screen, self.local_player.camera)
@@ -115,4 +118,12 @@ class Stellaris_2D:
 
         
 
-Stellaris_2D().run_game()
+if __name__ == "__main__":
+    profiler = cProfile.Profile()
+    try:
+        profiler.enable()
+        Stellaris_2D().run_game()
+    finally:
+        profiler.disable()
+        stats = pstats.Stats(profiler).sort_stats('cumtime')
+        stats.print_stats(30)

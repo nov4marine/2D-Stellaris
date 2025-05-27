@@ -6,6 +6,8 @@ from src.nation import Nation
 from src.game_state import game_state
 from src.action_manager import StartNewGameAction
 
+from src.gui import IconGrid
+
 class BaseMenuUI:
     def __init__(self, screen, game_state, gui_manager):
         self.screen = screen
@@ -217,17 +219,90 @@ class NewGameUI(BaseMenuUI):
             container=self.nation_edit_panel
         )
 
+        self.nation_name_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(40, 40, -1, 50),
+            text="Empire Name:",
+            manager=gui_manager,
+            container=self.edit_empire_name_panel
+        )
+
         self.nation_name_entry = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(0, 0, 600, 50),
+            relative_rect=pygame.Rect(200, 40, 300, 50),
             manager=gui_manager,
             container=self.edit_empire_name_panel,
-            anchors={'centerx': 'centerx'}
         )
         self.nation_name_entry.set_text("Enter Nation Name")
 
-        #self.nation_flag_selector = pygame_gui.elements.
-        #add nation flag selector here
-        #self.nation_flag_selector = pygame_gui.elements.UIImageButton(
+        self.nation_adjective_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(40, 100, -1, 50),
+            text="Empire Adjective:",
+            manager=gui_manager,
+            container=self.edit_empire_name_panel
+        )
+
+        self.nation_adjective_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(200, 100, 300, 50),
+            manager=gui_manager,
+            container=self.edit_empire_name_panel,
+        )
+
+        self.nation_flag_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(200, 180, 100, 50),
+            text="Empire Flag",
+            manager=gui_manager,
+            container=self.edit_empire_name_panel
+        )
+        
+        self.flag_color = pygame.Surface((200, 200))  # Placeholder for the flag color
+        self.nation_flag = pygame_gui.elements.UIImage(
+            relative_rect=pygame.Rect(150, 290, 200, 200),
+            image_surface=self.flag_color,
+            manager=gui_manager,
+            container=self.edit_empire_name_panel
+        )
+
+        self.colors = [
+            (255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
+            (255, 165, 0), (128, 0, 128), (0, 255, 255), (192, 192, 192),
+            (255, 192, 203), (0, 128, 0), (128, 128, 0), (0, 0, 128),
+            (128, 128, 128), (255, 105, 180), (75, 0, 130), (255, 20, 147),
+            (255, 69, 0), (0, 191, 255), (34, 139, 34), (255, 215, 0),
+            (255, 0, 255), (0, 0, 0), (255, 140, 0), (70, 130, 180),
+            ]
+        color_icons = [pygame.Surface((50, 50)) for _ in self.colors]  # Create surfaces for each color
+        for i, color in enumerate(self.colors):
+            color_icons[i].fill(color)
+
+        self.flag_color_selector = IconGrid(
+            gui_manager=gui_manager,
+            container=self.edit_empire_name_panel,
+            rows=6,
+            cols=4,
+            button_size=50,
+            spacing=5,
+            start_pos=(900, 100),
+            icons=color_icons,
+        )  # Assuming colors is a list of color tuples
+
+        import os
+        flag_icon_folder = "2D-Stellaris/assets/flag_icons"
+        flag_icon_files = sorted([
+            f for f in os.listdir(flag_icon_folder) if f.endswith('.png')
+        ])
+        flag_icons = [pygame.image.load(os.path.join(flag_icon_folder, f)).convert_alpha() for f in flag_icon_files]
+
+        self.selected_flag_icon = None  # To store the selected flag icon
+
+        self.flag_icon_selector = IconGrid(
+            gui_manager=gui_manager,
+            container=self.edit_empire_name_panel,
+            rows=6,
+            cols=4,
+            button_size=50,
+            spacing=5,
+            start_pos=(600, 100),
+            icons=flag_icons,  # Assuming flag_icons is a list of semi transparent flag images
+        )
 
         # Species Panel
         # This panel is for selecting the species of the empire.
@@ -239,14 +314,35 @@ class NewGameUI(BaseMenuUI):
         )
 
         self.species_name = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(0, 0, 600, 50),
+            relative_rect=pygame.Rect(200, 40, 200, 50),
             manager=gui_manager,
             container=self.edit_species_panel
         )
         self.species_name.set_text("Enter Species Name")
 
+        self.species_name_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(40, 40, -1, 50),
+            text="Species Name:",
+            manager=gui_manager,
+            container=self.edit_species_panel
+        )
+
+        self.species_plural = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(200, 100, 200, 50),
+            manager=gui_manager,
+            container=self.edit_species_panel
+        )
+        self.species_plural.set_text("Enter Species Plural Name")
+
+        self.species_plural_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(40, 100, -1, 50),
+            text="Species Plural Name:",
+            manager=gui_manager,
+            container=self.edit_species_panel
+        )
+
         self.species_traits = pygame_gui.elements.UISelectionList(
-            relative_rect=pygame.Rect(300, 70, 600, 400),
+            relative_rect=pygame.Rect(900, 100, 250, 400),
             item_list=[
                 "Intelligent",
                 "Strong",
@@ -277,7 +373,24 @@ class NewGameUI(BaseMenuUI):
             manager=gui_manager
         )
 
-        #self.species_appearance = pygame_gui.elements.UISelectionList(
+        self.species_traits_summary = pygame_gui.elements.UITextBox(
+            html_text="Select species traits to see their effects.", #have this fetch a dictionary of traits and their effects
+            relative_rect=pygame.Rect(600, 100, 250, 400),
+            manager=gui_manager,
+            container=self.edit_species_panel,
+        )
+
+        self.species_icons = []
+        self.species_appearance = IconGrid(
+            gui_manager=gui_manager,
+            container=self.edit_species_panel,
+            rows=4,
+            cols=4,
+            button_size=50,
+            spacing=5,
+            start_pos=(50, 200),
+            icons=self.species_icons
+        )  # Assuming species_icons is a list of sprites/non transparent image portraits
 
         # Edit Homeworld Panel
         # This panel is for selecting the homeworld of the empire.
@@ -706,6 +819,33 @@ class NewGameUI(BaseMenuUI):
             "Ship Appearance": "edit_ship_appearance_panel",
             "Ruler": "edit_ruler_panel",
         }
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = pygame.mouse.get_pos()
+            # Flag color selection
+            for i, icon_btn in enumerate(self.flag_color_selector.icon_buttons):
+                if icon_btn["button"].rect.collidepoint(mouse_pos):
+                    selected_color = self.colors[i]
+                    self.flag_color.fill(selected_color)
+                    # If a flag icon is already selected, composite it over the new color
+                    if self.selected_flag_icon is not None:
+                        combined = self.flag_color.copy()
+                        combined.blit(self.selected_flag_icon, (0, 0))
+                        self.nation_flag.set_image(combined)
+                    else:
+                        self.nation_flag.set_image(self.flag_color)
+                    print(f"Selected Flag Color: {selected_color}")
+
+            # Flag icon selection
+            for i, icon_btn in enumerate(self.flag_icon_selector.icon_buttons):
+                if icon_btn["button"].rect.collidepoint(mouse_pos):
+                    self.selected_flag_icon = self.flag_icon_selector.icons[i]
+                    self.selected_flag_icon = pygame.transform.scale(self.selected_flag_icon, (200, 200))  # Scale to fit the flag area
+                    # Composite the icon over the current color
+                    combined = self.flag_color.copy()
+                    combined.blit(self.selected_flag_icon, (0, 0))
+                    self.nation_flag.set_image(combined)
+                    print(f"Selected Flag Icon: {i}")
 
         if event.type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION:
             if event.ui_element == self.edit_nation_phases:

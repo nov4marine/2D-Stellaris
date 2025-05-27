@@ -309,6 +309,66 @@ class ButtonGrid:
                 })
 
         return self.buttons
+    
+class IconGrid:
+
+    def __init__(self, gui_manager, container, rows, cols, button_size, spacing, start_pos, icons=None):
+        """
+        Create a grid of buttons.
+
+        Args:
+            gui_manager: The pygame_gui.UIManager instance.
+            container: The container for the buttons (e.g., a UIPanel).
+            rows: Number of rows in the grid.
+            cols: Number of columns in the grid.
+            button_size: Tuple (width, height) for each button.
+            spacing: Tuple (horizontal_spacing, vertical_spacing) between buttons.
+            start_pos: Tuple (x, y) for the top-left position of the grid.
+            button_texts: List of texts for the buttons (optional).
+            icons: List of images for the buttons (optional).
+
+        Returns:
+            A list of dictionaries containing button objects and their metadata.
+        """
+        self.gui_manager = gui_manager
+        self.container = container
+        self.rows = rows
+        self.cols = cols
+        self.button_size = button_size
+        self.spacing = spacing
+        self.start_pos = start_pos
+        self.icons = icons
+
+        self.icon_buttons = []
+        self.start_x, self.start_y = start_pos
+
+        for row in range(rows):
+            for col in range(cols):
+                # Calculate button position
+                x = self.start_x + col * (self.button_size + self.spacing)
+                y = self.start_y + row * (self.button_size + self.spacing)
+
+                # Determine button image
+                image = icons[row * cols + col] if icons else None
+
+                # Create the button
+                button = pygame_gui.elements.UIImage(
+                    relative_rect=pygame.Rect(x, y, self.button_size, self.button_size),
+                    image_surface=image if image else None,
+                    manager=gui_manager,
+                    container=container
+                )
+
+                # Store the button and its metadata
+                self.icon_buttons.append({
+                    "button": button,
+                    "row": row,
+                    "col": col,
+                    "image": image,
+                    "selected": False
+                })
+
+
 
 class OutlinerPanel:
     def __init__(self, x, y, width, height, manager, nation):

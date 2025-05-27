@@ -8,6 +8,7 @@ class Nation:
     def __init__(self, name, population, species, homeworld, ethos, origin, civics, government, ship_appearance=None, first_ruler=None):
         self.name = name
         self.flag = None #flag of the nation
+        self.color = (200, 0, 0) #used for soverignity and other things, like the color of the nation in the galaxy map
         self.gdp = 0 #the big one that determines everything else
         self.population = population #starting population (instance of pop? or total number?)
         self.species = species # a list of all species in the nation. initially just the starting species
@@ -137,7 +138,8 @@ class Nation:
     def initialize_capital(self):
         """Initialize the capital system and planet."""
         self.capital = self.homeworld[0]         # Planet object
-        self.capital_system = self.homeworld[1]  # SolarSystem object
+        self.capital_system = self.homeworld[1]
+        #self.capital_system.owner = self  # SolarSystem object
 
         # Attach a Colony to the planet
         self.capital.colony = Colony(

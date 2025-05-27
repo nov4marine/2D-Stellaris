@@ -85,7 +85,7 @@ class GlobalInputManager:
                 print("Right click at", pygame.mouse.get_pos())
 
         if event.type == pygame.MOUSEWHEEL:
-            new_zoom = self.camera.target_zoom + (event.y * 0.1)
+            new_zoom = self.camera.zoom + (event.y * self.camera.ZOOM_STEP)
             cursor_pos = pygame.mouse.get_pos()
             self.camera.zoom_to(new_zoom, cursor_pos)
 
@@ -111,7 +111,7 @@ class GlobalInputManager:
                 print("Right click at", pygame.mouse.get_pos())
 
         if event.type == pygame.MOUSEWHEEL:
-            new_zoom = self.camera.target_zoom + (event.y * 0.1)
+            new_zoom = self.camera.zoom + (event.y * self.camera.ZOOM_STEP)
             cursor_pos = pygame.mouse.get_pos()
             self.camera.zoom_to(new_zoom, cursor_pos)
 
@@ -125,9 +125,9 @@ class GlobalInputManager:
         if self.key_states[pygame.K_d]:
             self.camera.move(50, 0)
         if self.key_states[pygame.K_EQUALS]:
-            self.camera.set_zoom(self.camera.target_zoom * 1.05)
+            self.camera.set_zoom(self.camera.zoom + self.camera.ZOOM_STEP)
         if self.key_states[pygame.K_MINUS]:
-            self.camera.set_zoom(self.camera.target_zoom * 0.95)
+            self.camera.set_zoom(self.camera.zoom - self.camera.ZOOM_STEP)
 
 
 

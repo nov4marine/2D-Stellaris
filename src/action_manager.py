@@ -73,7 +73,6 @@ class StartNewGameAction(Action):
         
         # Create a new galaxy based on the parameters
         self.game_state["galaxy"] = Galaxy(
-            galaxy_size=10000,
             num_stars=num_stars
         )
 
@@ -91,18 +90,19 @@ class StartNewGameAction(Action):
         #add the human player (in this case THE player in single player)
         self.game_state["player_manager"].add_player(HumanPlayer(name="Player 1", is_local=True)) #add the human player
         #create custom nation for the human player based on the setup menu
-        capital_system = SolarSystem.assign_capital_system(self.game_state["galaxy"], nation_parameters)
-        print(f"Capital system assigned: {capital_system}")
         nation1 = Nation(
             name=nation_parameters["name"],
             species=nation_parameters["species"],
             population=nation_parameters["population"],
-            homeworld=capital_system, # earth, sol
+            homeworld=capital_system, # all are (planet, solar_system) such as: earth, sol
             ethos=nation_parameters["ethos"],
             origin=nation_parameters["origin"],
             civics=nation_parameters["civics"],
             government=nation_parameters["government"],
         )
+        capital_system = SolarSystem.assign_capital_system(self.game_state["galaxy"], nation1)
+        print(f"Capital system assigned: {capital_system}")
+
         #assign that nation to the human player
         self.game_state["player_manager"].assign_nation(self.game_state["player_manager"].players[-1], nation1)
 

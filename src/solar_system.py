@@ -157,7 +157,7 @@ class SolarSystem:
         return [b for b in self.bodies if b.body_type == "asteroid"]
 
     @staticmethod
-    def assign_capital_system(galaxy, nation_params):
+    def assign_capital_system(galaxy, nation):
         """
         Assigns a random SolarSystem and planet as the nation's homeworld.
         Modifies the planet to be habitable and sets its properties.
@@ -168,7 +168,7 @@ class SolarSystem:
         if not unowned_systems:
             raise Exception("No unowned solar systems available for capital assignment.")
         system = random.choice(unowned_systems)
-        system.owner = nation_params.get("name", "Unknown")
+        system.owner = nation
 
         # Prefer rocky planets, fallback to any planet
         rocky_planets = [p for p in system.get_planets() if getattr(p, "type", None) == "rocky"]
@@ -182,8 +182,8 @@ class SolarSystem:
 
         # Set planet as habitable and assign properties
         planet.habitable = True
-        planet.name = nation_params["homeworld"]["planet"]
-        planet.climate = nation_params["homeworld"]["climate"]
+        planet.name = nation.homeworld["homeworld"]["planet"]
+        planet.climate = nation.homeworld["homeworld"]["climate"]
         planet.color = (0, 255, 255)  # Optional: visually mark as habitable
 
         return planet, system.name
